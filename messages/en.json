@@ -1,0 +1,21 @@
+{
+  "Header": {
+    "home": "Home",
+    "blog": "Blog",
+    "contactUs": "Contact Us",
+    "signUp": "Sign up",
+    "loginRegister": "Login / Register",
+    "featuredProperties": "Featured Properties",
+    "newListings": "New Listings",
+    "allPosts": "All Posts",
+    "tipsGuides": "Tips & Guides",
+    "marketNews": "Market News",
+    "getInTouch": "Get in Touch",
+    "support": "Support",
+    "faq": "FAQ"
+  },
+  "LocaleSelect": {
+    "english": "English",
+    "thai": "ไทย"
+  }
+}

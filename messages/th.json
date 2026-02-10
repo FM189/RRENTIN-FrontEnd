@@ -1,0 +1,21 @@
+{
+  "Header": {
+    "home": "หน้าแรก",
+    "blog": "บล็อก",
+    "contactUs": "ติดต่อเรา",
+    "signUp": "สมัครสมาชิก",
+    "loginRegister": "เข้าสู่ระบบ / ลงทะเบียน",
+    "featuredProperties": "อสังหาริมทรัพย์แนะนำ",
+    "newListings": "รายการใหม่",
+    "allPosts": "บทความทั้งหมด",
+    "tipsGuides": "เคล็ดลับและคู่มือ",
+    "marketNews": "ข่าวตลาด",
+    "getInTouch": "ติดต่อ",
+    "support": "สนับสนุน",
+    "faq": "คำถามที่พบบ่อย"
+  },
+  "LocaleSelect": {
+    "english": "English",
+    "thai": "ไทย"
+  }
+}
