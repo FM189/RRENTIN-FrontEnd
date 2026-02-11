@@ -3,10 +3,11 @@ import Link from "next/link";
 interface LogoProps {
   variant?: "white" | "blue";
   size?: "sm" | "md" | "lg";
+  showText?: boolean;
   className?: string;
 }
 
-export default function Logo({ variant = "blue", size = "lg", className = "" }: LogoProps) {
+export default function Logo({ variant = "blue", size = "lg", showText = true, className = "" }: LogoProps) {
   const logoSrc =
     variant === "white"
       ? "/images/logo/rrentin-white-logo.png"
@@ -46,11 +47,13 @@ export default function Logo({ variant = "blue", size = "lg", className = "" }: 
         alt="RRentin Logo"
         className={`${currentSize.logo} object-contain`}
       />
-      <img
-        src={textSrc}
-        alt="RRentin"
-        className={`${currentSize.text} object-contain ${textMargin}`}
-      />
+      {showText && (
+        <img
+          src={textSrc}
+          alt="RRentin"
+          className={`${currentSize.text} object-contain ${textMargin}`}
+        />
+      )}
     </Link>
   );
 }

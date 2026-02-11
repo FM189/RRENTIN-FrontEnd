@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto, Poppins } from "next/font/google";
 import "./globals.css";
 import {NextIntlClientProvider} from 'next-intl';
+import AuthProvider from '@/components/providers/AuthProvider';
  
 
 const roboto = Roboto({
@@ -71,9 +72,11 @@ export default function RootLayout({
       <body
         className={`${roboto.className} ${roboto.variable} ${poppins.variable} antialiased`}
       >
-        <NextIntlClientProvider>
-          {children}
-        </NextIntlClientProvider>
+        <AuthProvider>
+          <NextIntlClientProvider>
+            {children}
+          </NextIntlClientProvider>
+        </AuthProvider>
       </body>
     </html>
   );
