@@ -11,8 +11,11 @@ export default function DashboardHeader() {
 
   // Get the last meaningful segment of the path as the page title key
   // /dashboard → "dashboard", /dashboard/owner/properties → "properties"
+  // Skip dynamic ID segments (numeric or UUID-like)
   const segments = pathname.replace(/\/$/, "").split("/").filter(Boolean);
-  const lastSegment = segments[segments.length - 1] ?? "dashboard";
+  const lastSegment =
+    [...segments].reverse().find((s) => !/^\d+$/.test(s) && !/^[0-9a-f-]{36}$/.test(s)) ??
+    "dashboard";
 
   // Map hyphenated slugs to camelCase menu keys
   const slugToKey: Record<string, string> = {

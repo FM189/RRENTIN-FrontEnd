@@ -6,41 +6,97 @@ interface StepperProps {
 }
 
 export default function Stepper({ steps, currentStep }: StepperProps) {
+  const totalSteps = steps.length;
+
   return (
-    <div className="flex items-center justify-center gap-0">
-      {steps.map((label, index) => {
+    <div
+      className="w-full grid"
+      style={{ gridTemplateColumns: `repeat(${totalSteps}, 1fr)` }}
+    >
+      {/* Row 1: Circles with connecting lines */}
+      {steps.map((_, index) => {
         const stepNumber = index + 1;
-        const isActive = stepNumber <= currentStep;
-        const isLast = index === steps.length - 1;
+        const isCompleted = stepNumber < currentStep;
+        const isCurrent = stepNumber === currentStep;
+        const isFirst = index === 0;
+        const isLast = index === totalSteps - 1;
 
         return (
-          <div key={label} className="flex items-center">
-            <div className="flex flex-col items-center">
-              {/* Circle */}
-              <div
-                className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center ${
-                  isActive ? "bg-[#0245A5]" : "bg-[#74757B]"
-                }`}
-              >
-                <span className="text-white text-lg lg:text-2xl font-semibold">
-                  {stepNumber}
-                </span>
-              </div>
-              {/* Label */}
-              <span
-                className={`mt-2 text-xs lg:text-sm font-medium text-center whitespace-nowrap ${
-                  isActive ? "text-[#0245A5]" : "text-[#74757B]"
-                }`}
-              >
-                {label}
-              </span>
+          <div key={`circle-${index}`} className="flex items-center">
+            {/* Left half line */}
+            <div className="flex-1 flex items-center">
+              {!isFirst && (
+                <div
+                  className={`w-full h-[2px] ${
+                    stepNumber <= currentStep ? "bg-primary" : "bg-[#C4C4C4]"
+                  }`}
+                />
+              )}
             </div>
 
-            {/* Connecting line */}
-            {!isLast && (
-              <div className="w-16 lg:w-30 h-[1.7px] bg-[#74757B] mb-5 mx-1" />
-            )}
+            {/* Circle */}
+            <div
+              className={`w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 rounded-full flex items-center justify-center border-2 shrink-0 ${
+                isCompleted
+                  ? "bg-primary border-primary"
+                  : isCurrent
+                  ? "bg-white border-primary"
+                  : "bg-white border-[#C4C4C4]"
+              }`}
+            >
+              {isCompleted ? (
+                <svg
+                  className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-6 lg:h-6"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <path
+                    d="M5 12L10 17L20 7"
+                    stroke="white"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <span
+                  className={`text-sm sm:text-base lg:text-2xl font-semibold ${
+                    isCurrent ? "text-primary" : "text-[#C4C4C4]"
+                  }`}
+                >
+                  {stepNumber}
+                </span>
+              )}
+            </div>
+
+            {/* Right half line */}
+            <div className="flex-1 flex items-center">
+              {!isLast && (
+                <div
+                  className={`w-full h-[2px] ${
+                    stepNumber < currentStep ? "bg-primary" : "bg-[#C4C4C4]"
+                  }`}
+                />
+              )}
+            </div>
           </div>
+        );
+      })}
+
+      {/* Row 2: Labels */}
+      {steps.map((label, index) => {
+        const stepNumber = index + 1;
+        const isFuture = stepNumber > currentStep;
+
+        return (
+          <span
+            key={`label-${index}`}
+            className={`mt-1.5 text-[10px] sm:text-xs lg:text-sm font-medium text-center whitespace-nowrap ${
+              isFuture ? "text-[#C4C4C4]" : "text-primary"
+            }`}
+          >
+            {label}
+          </span>
         );
       })}
     </div>

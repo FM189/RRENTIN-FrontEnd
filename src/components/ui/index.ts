@@ -6,3 +6,4 @@ export { default as PhoneInput } from "./PhoneInput";
 export { default as Logo } from "./Logo";
 export { default as LocaleSelect } from "./LocaleSelect";
 export { default as Stepper } from "./Stepper";
+export { default as MultiSelect } from "./MultiSelect";

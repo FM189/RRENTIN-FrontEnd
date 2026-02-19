@@ -17,7 +17,8 @@ interface MenuItem {
 const ownerMenu: MenuItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: "dashboard-circle" },
   { labelKey: "properties", href: "/dashboard/owner/properties", icon: "properties" },
-  { labelKey: "tenants", href: "/dashboard/owner/tenants" },
+  { labelKey: "tenants", href: "/dashboard/owner/tenants", icon:"tenants" },
+  { labelKey: "agents", href: "/dashboard/owner/agents", icon:"agents" },
   { labelKey: "onDemandService", href: "/dashboard/owner/on-demand-service" },
   { labelKey: "payments", href: "/dashboard/owner/payments" },
   { labelKey: "insights", href: "/dashboard/owner/insights" },
