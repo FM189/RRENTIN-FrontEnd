@@ -173,21 +173,28 @@
         "totalDesc": "คุณมี {count} อสังหาริมทรัพย์ในพอร์ตโฟลิโอ",
         "freeProperty": "อสังหาริมทรัพย์ว่าง",
         "free": "ว่าง",
-        "freeDesc": "{count} อสังหาริมทรัพย์เปิดให้เช่า",
+        "freeDesc": "{count} อสังหาริมทรัพย์ว่างสำหรับให้เช่า",
         "rentedProperty": "ให้เช่าแล้ว",
         "rented": "ให้เช่า",
-        "rentedDesc": "{count} อสังหาริมทรัพย์ให้เช่าอยู่",
+        "rentedDesc": "{count} อสังหาริมทรัพย์เปิดให้เช่าอยู่",
         "pendingApprovals": "รอการอนุมัติ",
         "pending": "รอดำเนินการ",
         "pendingDesc": "อสังหาริมทรัพย์เหล่านี้รอการอนุมัติจากผู้ดูแลระบบ",
         "propertyViews": "ยอดเข้าชม",
         "views": "ครั้ง",
-        "viewsDesc": "ดีกว่าเดือนที่แล้ว <percentage>+$43.14</percentage>"
+        "viewsDesc": "ข้อมูลยอดชมจะพร้อมใช้งานเร็วๆ นี้"
       },
       "myProperties": "อสังหาริมทรัพย์ของฉัน",
       "searchProperties": "อสังหาริมทรัพย์",
       "status": "สถานะ",
       "type": "ประเภท",
+      "allStatuses": "ทุกสถานะ",
+      "statusAvailable": "ว่าง",
+      "statusRented": "ให้เช่าแล้ว",
+      "statusUnavailable": "ไม่พร้อมให้เช่า",
+      "allTypes": "ทุกประเภท",
+      "noProperties": "ไม่พบอสังหาริมทรัพย์",
+      "noPropertiesDesc": "ลองปรับการค้นหาหรือตัวกรองของคุณ",
       "mapView": "มุมมองแผนที่",
       "gridView": "มุมมองตาราง",
       "mostDemanded": "อสังหาริมทรัพย์ยอดนิยม",
@@ -199,6 +206,8 @@
         "bed": "ห้องนอน",
         "baths": "ห้องน้ำ",
         "sqm": "ตร.ม.",
+        "sqft": "ตร.ฟ.",
+        "sqw": "ตร.วา",
         "floors": "ชั้น",
         "edit": "แก้ไข",
         "morePhotos": "+{count}",
@@ -219,6 +228,7 @@
         "furnishing": "เฟอร์นิเจอร์",
         "securitySafety": "ความปลอดภัย",
         "viewsDirection": "วิวและทิศทาง",
+        "rentalFeatures": "คุณสมบัติและกฎการเช่า",
         "reviews": "รีวิว",
         "averageRating": "คะแนนเฉลี่ย",
         "avgRatingYear": "คะแนนเฉลี่ยในปีนี้",
@@ -229,6 +239,7 @@
       },
       "addPropertyPage": {
         "pageTitle": "เพิ่มอสังหาริมทรัพย์",
+        "editPageTitle": "แก้ไขที่พัก",
         "steps": {
           "basicInfo": "ข้อมูลพื้นฐาน",
           "propertyInfo": "ข้อมูลอสังหาริมทรัพย์",
@@ -421,6 +432,14 @@
             "land_title_deed": "โฉนดที่ดิน",
             "purchase_contract": "สัญญาซื้อขาย",
             "utility_bill": "ใบเสร็จค่าสาธารณูปโภค (น้ำ/ไฟ)"
+          },
+          "uploading": "กำลังอัปโหลด...",
+          "errors": {
+            "invalidType": "ประเภทไฟล์ไม่ถูกต้อง",
+            "tooLarge": "ไฟล์เกินขนาด {mb} MB",
+            "photosRequired": "กรุณาอัปโหลดรูปภาพอสังหาริมทรัพย์อย่างน้อย 1 รูป",
+            "verificationRequired": "กรุณาเลือกประเภทการยืนยันกรรมสิทธิ์",
+            "documentsRequired": "กรุณาอัปโหลดเอกสารกรรมสิทธิ์อย่างน้อย 1 ฉบับ"
           }
         },
         "step5": {
@@ -435,6 +454,7 @@
           "month": "เดือน",
           "addContract": "+ เพิ่มสัญญา",
           "addProperty": "เพิ่มอสังหาริมทรัพย์",
+          "updateProperty": "อัปเดตอสังหาริมทรัพย์",
           "maxContractsReached": "เพิ่มสัญญาได้สูงสุด {max} รายการ"
         },
         "errors": {
@@ -527,7 +547,7 @@
         "leaseEndingDesc": "ผู้เช่าเหล่านี้มีสัญญาเช่าที่จะหมดอายุภายใน 30 วัน",
         "propertyViews": "ยอดชมอสังหาริมทรัพย์",
         "views": "ครั้ง",
-        "viewsDesc": "ดีขึ้น <percentage>+$43.14</percentage> เมื่อเทียบกับเดือนที่แล้ว"
+        "viewsDesc": "ข้อมูลยอดชมจะพร้อมใช้งานเร็วๆ นี้"
       }
     },
     "agents": {
@@ -554,14 +574,37 @@
         "pendingDesc": "ตัวแทนเหล่านี้ยังไม่ตอบรับคำขอจ้างงานของคุณ",
         "propertyViews": "ยอดชมอสังหาริมทรัพย์",
         "views": "ครั้ง",
-        "viewsDesc": "ดีขึ้น <percentage>+$43.14</percentage> เมื่อเทียบกับเดือนที่แล้ว"
+        "viewsDesc": "ข้อมูลยอดชมจะพร้อมใช้งานเร็วๆ นี้"
       },
       "detailPage": {
         "agentProfile": "โปรไฟล์ตัวแทน",
         "basicDetails": "ข้อมูลพื้นฐาน",
         "linkedBuildings": "อาคารที่เชื่อมต่อ",
         "transaction": "ธุรกรรม",
-        "message": "ส่งข้อความ"
+        "message": "ส่งข้อความ",
+        "experienceTitle": "ประสบการณ์ บริการ และความพร้อม",
+        "experienceLabel": "ประสบการณ์",
+        "serviceChargesLabel": "ค่าบริการ",
+        "reviews": "รีวิว",
+        "readMore": "อ่านเพิ่มเติม",
+        "linkedPropertiesTitle": "อสังหาริมทรัพย์ที่เชื่อมต่อ",
+        "colProperties": "อสังหาริมทรัพย์",
+        "colMonthlyRent": "ค่าเช่ารายเดือน",
+        "colStartEnd": "เริ่ม - สิ้นสุด",
+        "colRole": "บทบาท",
+        "colCommission": "ค่าคอมมิชชั่น",
+        "colPaymentStatus": "สถานะการชำระ",
+        "mostDemanding": "อสังหาริมทรัพย์ยอดนิยม",
+        "perMonth": "ต่อเดือน",
+        "statusPending": "รอดำเนินการ",
+        "statusPaid": "ชำระแล้ว",
+        "statusRejected": "ถูกปฏิเสธ",
+        "transactionHistory": "ประวัติการทำธุรกรรม",
+        "colInvoiceId": "รหัสใบแจ้งหนี้",
+        "colDate": "วันที่",
+        "colAmount": "จำนวนเงิน",
+        "colSlip": "สลิป",
+        "view": "ดู"
       }
     }
   },

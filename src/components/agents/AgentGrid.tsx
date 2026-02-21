@@ -182,7 +182,7 @@ export default function AgentGrid() {
 
           {/* Center: search */}
           <div
-            className="flex h-[40px] flex-1 items-center gap-[10px] rounded-[4px] border border-[rgba(220,220,220,0.3)] bg-white px-[18px]"
+            className="flex h-[40px] w-full items-center gap-[10px] rounded-[4px] border border-[rgba(220,220,220,0.3)] bg-white px-[18px] sm:flex-1"
             style={{ boxShadow: "0px 2px 12px rgba(53, 130, 231, 0.06)" }}
           >
             <Image
@@ -250,7 +250,7 @@ export default function AgentGrid() {
           scrollbarColor: "#0245A5 rgba(214, 227, 244, 0.8)",
         }}
       >
-        <div className="grid grid-cols-2 gap-[14px] sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filtered.map((agent) => (
             <AgentCard key={agent.id} agent={agent} />
           ))}

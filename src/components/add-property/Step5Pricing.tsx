@@ -11,6 +11,7 @@ interface Step5Props {
   onSubmit: () => void;
   isSubmitting: boolean;
   submitError: string;
+  submitLabel?: string;
 }
 
 export default function Step5Pricing({
@@ -21,6 +22,7 @@ export default function Step5Pricing({
   onSubmit,
   isSubmitting,
   submitError,
+  submitLabel,
 }: Step5Props) {
   const t = useTranslations("Dashboard.properties.addPropertyPage");
 
@@ -263,7 +265,7 @@ export default function Step5Pricing({
           disabled={isSubmitting}
           className="px-5 py-2.5 bg-primary text-white text-base font-medium rounded hover:bg-primary-hover transition-colors disabled:opacity-50"
         >
-          {isSubmitting ? "..." : t("step5.addProperty")}
+          {isSubmitting ? "..." : (submitLabel ?? t("step5.addProperty"))}
         </button>
       </div>
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 export interface AgentData {
@@ -18,7 +19,7 @@ export default function AgentCard({ agent }: { agent: AgentData }) {
 
   return (
     <div
-      className="relative h-[185px] w-full overflow-hidden rounded-[6px]"
+      className="relative h-[240px] w-full overflow-hidden rounded-[6px] sm:h-[185px]"
       style={{ boxShadow: "0px 2px 12px rgba(53, 130, 231, 0.1)" }}
     >
       {/* Background photo */}
@@ -63,7 +64,7 @@ export default function AgentCard({ agent }: { agent: AgentData }) {
           Card is 185px tall. Panel starts at 100px → 81px of photo visible above.
           Panel grows with content; bottom gap ≈ 4px.                             */}
       <div
-        className="absolute left-[6px] right-[6px] top-[100px] flex flex-col items-center justify-center gap-[4px] rounded-[4px] bg-white px-[10px] pb-[2px] pt-[5px]"
+        className="absolute left-[6px] right-[6px] top-[145px] flex flex-col items-center justify-center gap-[4px] rounded-[4px] bg-white px-[10px] pb-[2px] pt-[5px] sm:top-[100px]"
         style={{ boxShadow: "0px 2px 12px rgba(53, 130, 231, 0.1)" }}
       >
         {/* Inner content group: flex-col; items-start; w-full */}
@@ -118,8 +119,8 @@ export default function AgentCard({ agent }: { agent: AgentData }) {
         <div className="h-0 w-full border-t-[0.4px] border-[#BCBCBC]" />
 
         {/* View Details button: 68×17px; #0245A5; radius 2px; centered via parent items-center */}
-        <button
-          type="button"
+        <Link
+          href={`/dashboard/owner/agents/${agent.id}`}
           className="flex h-[17px] w-[68px] items-center justify-center gap-[2px] rounded-[2px] px-[4px] py-[3px]"
           style={{ background: "#0245A5" }}
         >
@@ -132,7 +133,7 @@ export default function AgentCard({ agent }: { agent: AgentData }) {
             width={8}
             height={8}
           />
-        </button>
+        </Link>
       </div>
     </div>
   );

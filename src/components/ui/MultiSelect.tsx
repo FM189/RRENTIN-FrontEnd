@@ -65,11 +65,14 @@ export default function MultiSelect({
     }
   };
 
+  const CUSTOM_LIMIT = 10;
+  const customLimitReached = safeCustomItems.length >= CUSTOM_LIMIT;
+
   const handleAddCustom = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
       const trimmed = customInput.trim();
-      if (trimmed && !safeCustomItems.includes(trimmed) && onAddCustom) {
+      if (trimmed && !safeCustomItems.includes(trimmed) && onAddCustom && !customLimitReached) {
         onAddCustom(trimmed);
       }
       setCustomInput("");
@@ -173,15 +176,21 @@ export default function MultiSelect({
             {/* Custom input inside dropdown */}
             {allowCustom && (
               <div className="px-4 py-2.5 border-t border-[rgba(65,65,65,0.1)]">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                  onKeyDown={handleAddCustom}
-                  placeholder={customPlaceholder}
-                  className="w-full h-8 px-3 border border-[rgba(65,65,65,0.16)] rounded text-sm text-text placeholder:text-[rgba(65,65,65,0.4)] bg-white focus:outline-none focus:border-primary"
-                />
+                {customLimitReached ? (
+                  <p className="text-xs text-[rgba(65,65,65,0.5)]">
+                    Maximum {CUSTOM_LIMIT} custom items reached.
+                  </p>
+                ) : (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={customInput}
+                    onChange={(e) => setCustomInput(e.target.value)}
+                    onKeyDown={handleAddCustom}
+                    placeholder={customPlaceholder}
+                    className="w-full h-8 px-3 border border-[rgba(65,65,65,0.16)] rounded text-sm text-text placeholder:text-[rgba(65,65,65,0.4)] bg-white focus:outline-none focus:border-primary"
+                  />
+                )}
               </div>
             )}
           </div>

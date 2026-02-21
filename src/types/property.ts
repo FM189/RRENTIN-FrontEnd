@@ -16,6 +16,30 @@ export enum PropertyStatus {
 
 export const MAX_CONTRACTS = 5;
 
+export interface PropertyFiles {
+  photos: File[];
+  floorPlans: File[];
+  documents: File[];
+}
+
+export const INITIAL_PROPERTY_FILES: PropertyFiles = {
+  photos: [],
+  floorPlans: [],
+  documents: [],
+};
+
+export interface EditPropertyFiles {
+  newPhotos: File[];
+  newFloorPlans: File[];
+  newDocuments: File[];
+  existingPhotos: string[];       // kept S3 URLs (not deleted)
+  existingFloorPlans: string[];
+  existingDocuments: string[];
+  deletedPhotos: string[];        // removed URLs → backend deletes from S3
+  deletedFloorPlans: string[];
+  deletedDocuments: string[];
+}
+
 export interface ContractEntry {
   months: number;
   rentPrice: string;
@@ -37,8 +61,7 @@ export interface AddPropertyData {
   showingDates: string[];
   showingTimeFrom: string;
   showingTimeTo: string;
-  latitude: number | null;
-  longitude: number | null;
+  location: { type: "Point"; coordinates: [number, number] }; // [lng, lat]
 
   // Step 2: Property Info
   propertyTitle: string;
@@ -94,8 +117,7 @@ export const INITIAL_ADD_PROPERTY_DATA: AddPropertyData = {
   showingDates: [],
   showingTimeFrom: "",
   showingTimeTo: "",
-  latitude: null,
-  longitude: null,
+  location: { type: "Point", coordinates: [0, 0] },
 
   // Step 2
   propertyTitle: "",

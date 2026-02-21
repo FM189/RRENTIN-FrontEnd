@@ -1,246 +1,155 @@
-import mongoose, { Schema, Document, Model, Types } from "mongoose";
-import { PropertyType, PropertyStatus } from "@/types/property";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
-export { PropertyType, PropertyStatus };
+// ─── Sub-schemas ──────────────────────────────────────────────────────────────
 
-export interface IProperty extends Document {
-  owner: Types.ObjectId;
-
-  // Step 1: Basic Info
-  propertyType: PropertyType;
-  projectName: string;
-  address: string;
-  road?: string;
-  province: string;
-  district: string;
-  subDistrict: string;
-  zipCode: string;
-  country: string;
-  propertyStatus: PropertyStatus;
-  showingDates?: string[];
-  showingTimeFrom?: string;
-  showingTimeTo?: string;
-  latitude?: number;
-  longitude?: number;
-
-  // Step 2: Property Info
-  propertyTitle?: string;
-  description?: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  unitArea?: number;
-  unitAreaUnit?: string;
-  unitNumber?: string;
-  propertyCondition?: string;
-  buildingHeight?: string;
-  floor?: number;
-  selectBuilding?: string;
-
-  // Step 3: Features & Amenities
-  propertyFeatures?: string[];
-  amenities?: string[];
-  securityFeatures?: string[];
-  rentalFeatures?: string[];
-  propertyViews?: string[];
-  customFeatures?: string[];
-  customAmenities?: string[];
-  customSecurity?: string[];
-  customRentalFeatures?: string[];
-  customViews?: string[];
-
-  // Step 4: Photos
-  photos?: string[];
-
-  // Step 5: Pricing
-  rentPrice?: number;
-  depositMonths?: number;
-  minimumLease?: number;
-
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const PropertySchema = new Schema<IProperty>(
+const ContractSchema = new Schema(
   {
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Owner is required"],
+    months:          { type: Number, required: true, min: 1 },
+    rentPrice:       { type: String, required: true },
+    securityDeposit: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+// ─── Main schema ──────────────────────────────────────────────────────────────
+
+const PropertySchema = new Schema(
+  {
+    owner: { type: Types.ObjectId, ref: "User", required: true },
+
+    // ── Step 1: Basic Info ────────────────────────────────────────────────────
+    propertyType:    { type: String, required: true },
+    projectName:     { type: String, required: true },
+    address:         { type: String, required: true },
+    road:            { type: String, default: "" },
+    province:        { type: String, required: true },
+    district:        { type: String, required: true },
+    subDistrict:     { type: String, required: true },
+    zipCode:         { type: String, required: true },
+    country:         { type: String, default: "TH" },
+    propertyStatus:  { type: String, required: true, enum: ["available", "rented", "unavailable"] },
+    showingDates:    [{ type: String }],
+    showingTimeFrom: { type: String, default: "" },
+    showingTimeTo:   { type: String, default: "" },
+
+    // GeoJSON Point — enables $near / $geoWithin queries
+    location: {
+      type:        { type: String, enum: ["Point"], default: "Point" },
+      coordinates: { type: [Number], default: [0, 0] }, // [lng, lat]
     },
 
-    // Step 1: Basic Info
-    propertyType: {
-      type: String,
-      enum: Object.values(PropertyType),
-      required: [true, "Property type is required"],
-    },
-    projectName: {
-      type: String,
-      required: [true, "Project name is required"],
-      trim: true,
-      maxlength: [200, "Project name cannot exceed 200 characters"],
-    },
-    address: {
-      type: String,
-      required: [true, "Address is required"],
-      trim: true,
-    },
-    road: {
-      type: String,
-      trim: true,
-    },
-    province: {
-      type: String,
-      required: [true, "Province is required"],
-      trim: true,
-    },
-    district: {
-      type: String,
-      required: [true, "District is required"],
-      trim: true,
-    },
-    subDistrict: {
-      type: String,
-      required: [true, "Sub district is required"],
-      trim: true,
-    },
-    zipCode: {
-      type: String,
-      required: [true, "Zip code is required"],
-      trim: true,
-    },
-    country: {
-      type: String,
-      required: [true, "Country is required"],
-      trim: true,
-      default: "Thailand",
-    },
-    propertyStatus: {
-      type: String,
-      enum: Object.values(PropertyStatus),
-      required: [true, "Property status is required"],
-    },
-    showingDates: {
-      type: [String],
-    },
-    showingTimeFrom: {
-      type: String,
-      trim: true,
-    },
-    showingTimeTo: {
-      type: String,
-      trim: true,
-    },
-    latitude: {
-      type: Number,
-    },
-    longitude: {
-      type: Number,
-    },
+    // ── Step 2: Property Info ─────────────────────────────────────────────────
+    propertyTitle:     { type: String, required: true },
+    description:       { type: String, default: "" },
+    bedrooms:          { type: Number, default: 1, min: 0 },
+    bathrooms:         { type: Number, default: 1, min: 0 },
+    unitArea:          { type: String, default: "" },
+    unitAreaUnit:      { type: String, default: "sqm" },
+    unitNumber:        { type: String, default: "" },
+    propertyCondition: { type: String, default: "" },
+    buildingHeight:    { type: String, default: "" },
+    floor:             { type: Number, default: 1 },
+    selectBuilding:    { type: String, default: "" },
+    customBuilding:    { type: String, default: "" },
 
-    // Step 2: Property Info
-    propertyTitle: {
-      type: String,
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    bedrooms: {
-      type: Number,
-    },
-    bathrooms: {
-      type: Number,
-    },
-    unitArea: {
-      type: Number,
-    },
-    unitAreaUnit: {
-      type: String,
-      trim: true,
-      default: "sqm",
-    },
-    unitNumber: {
-      type: String,
-      trim: true,
-    },
-    propertyCondition: {
-      type: String,
-      trim: true,
-    },
-    buildingHeight: {
-      type: String,
-      trim: true,
-    },
-    floor: {
-      type: Number,
-    },
-    selectBuilding: {
-      type: String,
-      trim: true,
-    },
+    // ── Step 3: Features & Amenities ─────────────────────────────────────────
+    propertyFeatures:    [{ type: String }],
+    amenities:           [{ type: String }],
+    securityFeatures:    [{ type: String }],
+    rentalFeatures:      [{ type: String }],
+    propertyViews:       [{ type: String }],
+    customFeatures:      [{ type: String }],
+    customAmenities:     [{ type: String }],
+    customSecurity:      [{ type: String }],
+    customRentalFeatures:[{ type: String }],
+    customViews:         [{ type: String }],
 
-    // Step 3: Features & Amenities
-    propertyFeatures: {
-      type: [String],
-    },
-    amenities: {
-      type: [String],
-    },
-    securityFeatures: {
-      type: [String],
-    },
-    rentalFeatures: {
-      type: [String],
-    },
-    propertyViews: {
-      type: [String],
-    },
-    customFeatures: {
-      type: [String],
-    },
-    customAmenities: {
-      type: [String],
-    },
-    customSecurity: {
-      type: [String],
-    },
-    customRentalFeatures: {
-      type: [String],
-    },
-    customViews: {
-      type: [String],
-    },
+    // ── Step 4: Photos & Documents (S3 URLs) ─────────────────────────────────
+    photos:                [{ type: String }], // S3 URLs
+    hasFloorPlan:          { type: Boolean, default: false },
+    floorPlanImages:       [{ type: String }], // S3 URLs
+    ownershipVerification: { type: String, default: "" },
+    ownershipDocuments:    [{ type: String }], // S3 URLs
 
-    // Step 4: Photos
-    photos: {
-      type: [String],
-    },
+    // ── Step 5: Pricing ───────────────────────────────────────────────────────
+    visitRequestPrice: { type: String, default: "" },
+    propertyPrice:     { type: String, default: "" },
+    contracts:         { type: [ContractSchema], default: [] },
 
-    // Step 5: Pricing
-    rentPrice: {
-      type: Number,
+    // ── Admin approval ────────────────────────────────────────────────────────
+    approvalStatus: {
+      type:    String,
+      enum:    ["pending", "approved", "rejected"],
+      default: "pending",
     },
-    depositMonths: {
-      type: Number,
-    },
-    minimumLease: {
-      type: Number,
-    },
+    approvalNote: { type: String, default: "" }, // admin rejection/note message
   },
   {
     timestamps: true,
   }
 );
 
-PropertySchema.index({ owner: 1 });
-PropertySchema.index({ propertyType: 1 });
-PropertySchema.index({ propertyStatus: 1 });
-PropertySchema.index({ province: 1, district: 1 });
 
-const Property: Model<IProperty> =
-  mongoose.models.Property ||
-  mongoose.model<IProperty>("Property", PropertySchema);
+export interface IProperty extends Document {
+  owner: Types.ObjectId;
+  // Step 1
+  propertyType: string;
+  projectName: string;
+  address: string;
+  road: string;
+  province: string;
+  district: string;
+  subDistrict: string;
+  zipCode: string;
+  country: string;
+  propertyStatus: string;
+  showingDates: string[];
+  showingTimeFrom: string;
+  showingTimeTo: string;
+  location: { type: string; coordinates: [number, number] };
+  // Step 2
+  propertyTitle: string;
+  description: string;
+  bedrooms: number;
+  bathrooms: number;
+  unitArea: string;
+  unitAreaUnit: string;
+  unitNumber: string;
+  propertyCondition: string;
+  buildingHeight: string;
+  floor: number;
+  selectBuilding: string;
+  customBuilding: string;
+  // Step 3
+  propertyFeatures: string[];
+  amenities: string[];
+  securityFeatures: string[];
+  rentalFeatures: string[];
+  propertyViews: string[];
+  customFeatures: string[];
+  customAmenities: string[];
+  customSecurity: string[];
+  customRentalFeatures: string[];
+  customViews: string[];
+  // Step 4
+  photos: string[];
+  hasFloorPlan: boolean;
+  floorPlanImages: string[];
+  ownershipVerification: string;
+  ownershipDocuments: string[];
+  // Step 5
+  visitRequestPrice: string;
+  propertyPrice: string;
+  contracts: { months: number; rentPrice: string; securityDeposit: string }[];
+  // Admin approval
+  approvalStatus: "pending" | "approved" | "rejected";
+  approvalNote: string;
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const Property: mongoose.Model<IProperty> =
+  mongoose.models.Property || mongoose.model<IProperty>("Property", PropertySchema);
 
 export default Property;

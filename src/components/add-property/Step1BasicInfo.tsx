@@ -271,11 +271,8 @@ export default function Step1BasicInfo({
 
         {/* Google Map */}
         <PropertyGoogleMap
-          latitude={formData.latitude}
-          longitude={formData.longitude}
-          onLocationChange={(lat, lng) =>
-            onFormDataChange({ latitude: lat, longitude: lng })
-          }
+          location={formData.location}
+          onLocationChange={(loc) => onFormDataChange({ location: loc })}
         />
       </div>
 

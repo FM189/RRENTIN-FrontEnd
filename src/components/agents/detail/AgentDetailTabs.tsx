@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 
-type Tab = "basicDetails" | "linkedBuildings" | "transaction";
+export type AgentTab = "basicDetails" | "linkedBuildings" | "transaction";
 
-export default function AgentDetailTabs() {
+interface AgentDetailTabsProps {
+  activeTab: AgentTab;
+  onTabChange: (tab: AgentTab) => void;
+}
+
+export default function AgentDetailTabs({ activeTab, onTabChange }: AgentDetailTabsProps) {
   const t = useTranslations("Dashboard.agents.detailPage");
-  const [activeTab, setActiveTab] = useState<Tab>("basicDetails");
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: AgentTab; label: string }[] = [
     { key: "basicDetails", label: t("basicDetails") },
     { key: "linkedBuildings", label: t("linkedBuildings") },
     { key: "transaction", label: t("transaction") },
@@ -26,7 +29,7 @@ export default function AgentDetailTabs() {
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => onTabChange(tab.key)}
               className="flex h-[44px] items-center rounded-[8px] px-[20px] text-[15px] font-semibold leading-[18px] tracking-[0.05em] text-white"
               style={{ background: "#0245A5" }}
             >
@@ -36,7 +39,7 @@ export default function AgentDetailTabs() {
             <button
               key={tab.key}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => onTabChange(tab.key)}
               className="text-[15px] font-semibold leading-[18px] tracking-[0.05em] text-[#4B4B4B]"
             >
               {tab.label}

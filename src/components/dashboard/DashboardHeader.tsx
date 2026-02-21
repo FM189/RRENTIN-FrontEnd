@@ -13,9 +13,17 @@ export default function DashboardHeader() {
   // /dashboard → "dashboard", /dashboard/owner/properties → "properties"
   // Skip dynamic ID segments (numeric or UUID-like)
   const segments = pathname.replace(/\/$/, "").split("/").filter(Boolean);
+  // Segments that are page actions, not meaningful titles
+  const skipSegments = new Set(["edit", "add"]);
+
   const lastSegment =
-    [...segments].reverse().find((s) => !/^\d+$/.test(s) && !/^[0-9a-f-]{36}$/.test(s)) ??
-    "dashboard";
+    [...segments].reverse().find(
+      (s) =>
+        !skipSegments.has(s) &&        // skip action segments
+        !/^\d+$/.test(s) &&            // skip pure numbers
+        !/^[0-9a-f-]{36}$/.test(s) && // skip UUIDs
+        !/^[0-9a-f]{24}$/.test(s)     // skip MongoDB ObjectIds
+    ) ?? "dashboard";
 
   // Map hyphenated slugs to camelCase menu keys
   const slugToKey: Record<string, string> = {

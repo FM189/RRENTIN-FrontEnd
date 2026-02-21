@@ -1,16 +1,33 @@
-"use client";
-
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 import StatsCards from "@/components/properties/StatsCards";
-import PropertyFilters from "@/components/properties/PropertyFilters";
-import PropertyGrid from "@/components/properties/PropertyGrid";
+import PropertiesContent from "@/components/properties/PropertiesContent";
+import { getOwnerPropertyStats, getOwnerProperties } from "@/actions/properties";
 
-export default function OwnerPropertiesPage() {
-  const t = useTranslations("Dashboard.properties");
-  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+interface PageProps {
+  searchParams: Promise<{
+    page?: string;
+    search?: string;
+    status?: string;
+    type?: string;
+  }>;
+}
+
+export default async function OwnerPropertiesPage({ searchParams }: PageProps) {
+  const t = await getTranslations("Dashboard.properties");
+  const params = await searchParams;
+
+  const page = Math.max(1, Number(params.page) || 1);
+  const search = params.search ?? "";
+  const status = params.status ?? "";
+  const type = params.type ?? "";
+
+  const [stats, result] = await Promise.all([
+    getOwnerPropertyStats(),
+    getOwnerProperties({ page, search, status, type }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -51,25 +68,20 @@ export default function OwnerPropertiesPage() {
       </div>
 
       {/* Stats Cards */}
-      <StatsCards />
+      <StatsCards stats={stats} />
 
       {/* My Properties Section */}
-      <div
-        className="rounded-xl bg-white p-5"
-        style={{ boxShadow: "0px 2px 12px rgba(53, 130, 231, 0.1)" }}
-      >
-        <PropertyFilters viewMode={viewMode} onViewModeChange={setViewMode} />
-        <div
-          className="mt-6 overflow-y-auto"
-          style={{
-            maxHeight: "690px",
-            scrollbarWidth: "thin",
-            scrollbarColor: "#0245A5 rgba(214, 227, 244, 0.8)",
-          }}
-        >
-          <PropertyGrid />
-        </div>
-      </div>
+      <Suspense>
+        <PropertiesContent
+          properties={result.properties}
+          totalPages={result.totalPages}
+          currentPage={result.page}
+          total={result.total}
+          currentSearch={search}
+          currentStatus={status}
+          currentType={type}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -4,16 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { formatPrice } from "@/lib/format";
 
 export interface Property {
   id: string;
   title: string;
   type: string;
   address: string;
-  price: number;
-  rating: number;
+  price: string;
   image: string;
-  status: "rent" | "free";
+  propertyStatus: "available" | "rented" | "unavailable";
+  approvalStatus: "pending" | "approved" | "rejected";
+  rating?: number;
   isMostDemanded?: boolean;
 }
 
@@ -25,6 +27,20 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   const t = useTranslations("Dashboard.properties");
   const router = useRouter();
 
+  const statusStyles = {
+    available: "bg-[rgba(52,199,89,0.11)] text-[#34C759]",
+    rented: "bg-[rgba(53,130,231,0.19)] text-[#0245A5]",
+    unavailable: "bg-[rgba(150,150,150,0.15)] text-[#969696]",
+  };
+
+  const statusLabels = {
+    available: t("statusAvailable"),
+    rented: t("statusRented"),
+    unavailable: t("statusUnavailable"),
+  };
+
+  const rating = property.rating ?? 4.9;
+
   return (
     <Link
       href={`/dashboard/owner/properties/${property.id}`}
@@ -34,17 +50,21 @@ export default function PropertyCard({ property }: PropertyCardProps) {
       {/* Image Section */}
       <div className="relative aspect-[270/226] bg-[#A3A3A3]">
         <div className="absolute inset-0 overflow-hidden rounded-[5.5px]">
-          <Image
-            src={property.image}
-            alt={property.title}
-            fill
-            className="object-cover"
-          />
+          {property.image ? (
+            <Image
+              src={property.image}
+              alt={property.title}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-[#D6E3F4]" />
+          )}
           {/* Dark overlay */}
           <div className="absolute inset-0 bg-black/20" />
         </div>
 
-        {/* Type badge - top left (outside overflow-hidden so no clipping) */}
+        {/* Type badge - top left */}
         <span
           className="absolute left-0 top-0 rounded-br-[2px] bg-white px-2 py-1 text-[8.5px] font-semibold leading-[10px] tracking-[0.05em] text-[#3582E7]"
           style={{ backdropFilter: "blur(11px)" }}
@@ -60,7 +80,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
             e.stopPropagation();
             router.push(`/dashboard/owner/properties/${property.id}/edit`);
           }}
-          className="absolute right-2.5 top-2.5 flex h-[18px] w-[18px] items-center justify-center"
+          className="absolute right-2.5 top-2.5 flex h-[18px] w-[18px] cursor-pointer items-center justify-center"
         >
           <Image
             src="/images/icons/dashboard/property/edit.png"
@@ -73,9 +93,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         {/* Content Panel - positioned inside image */}
         <div
           className="absolute bottom-3 left-[14px] right-[14px] flex flex-col gap-[5px] rounded-[5.5px] bg-white px-3.5 py-3"
-          style={{
-            boxShadow: "0px 1.4px 8.4px rgba(53, 130, 231, 0.1)",
-          }}
+          style={{ boxShadow: "0px 1.4px 8.4px rgba(53, 130, 231, 0.1)" }}
         >
           {/* Most Demanded + Title Row */}
           <div className="flex flex-col">
@@ -89,13 +107,9 @@ export default function PropertyCard({ property }: PropertyCardProps) {
                 {property.title}
               </h4>
               <span
-                className={`shrink-0 rounded-[2px] px-1.5 py-[3px] text-[10px] font-semibold leading-[12px] tracking-[0.05em] ${
-                  property.status === "rent"
-                    ? "bg-[rgba(53,130,231,0.19)] text-[#0245A5]"
-                    : "bg-[rgba(52,199,89,0.11)] text-[#34C759]"
-                }`}
+                className={`shrink-0 rounded-[2px] px-1.5 py-[3px] text-[10px] font-semibold leading-[12px] tracking-[0.05em] ${statusStyles[property.propertyStatus]}`}
               >
-                {property.status === "rent" ? "Rent" : "Free"}
+                {statusLabels[property.propertyStatus]}
               </span>
             </div>
           </div>
@@ -120,7 +134,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           {/* Price + Rating */}
           <div className="flex items-center justify-between">
             <span className="text-[15px] font-semibold leading-[18px] tracking-[0.05em] text-heading">
-              ${property.price.toFixed(2)}
+              ฿{formatPrice(property.price)}
               <span className="text-[8.5px] font-normal leading-[10px] text-[#969696]">
                 /{t("perMonth")}
               </span>
@@ -134,7 +148,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
                 className="shrink-0"
               />
               <span className="text-[8.5px] leading-[10px] tracking-[0.05em] text-[#969696]">
-                {property.rating}/5
+                {rating}/5
               </span>
             </div>
           </div>

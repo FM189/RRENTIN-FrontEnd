@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import type { PropertyStats } from "@/actions/properties";
 
 interface StatItem {
   titleKey: string;
@@ -14,56 +15,58 @@ interface StatItem {
   highlight?: string;
 }
 
-const STATS: StatItem[] = [
-  {
-    titleKey: "totalProperties",
-    count: "12",
-    labelKey: "total",
-    descKey: "totalDesc",
-    descParams: { count: 12 },
-    icon: "/images/icons/dashboard/property/dollar.png",
-    iconBg: "#F1F7FF",
-  },
-  {
-    titleKey: "freeProperty",
-    count: "03",
-    labelKey: "free",
-    descKey: "freeDesc",
-    descParams: { count: "03" },
-    icon: "/images/icons/dashboard/property/dollar.png",
-    iconBg: "#F1F7FF",
-  },
-  {
-    titleKey: "rentedProperty",
-    count: "09",
-    labelKey: "rented",
-    descKey: "rentedDesc",
-    descParams: { count: "09" },
-    icon: "/images/icons/dashboard/property/dollar.png",
-    iconBg: "#F1F7FF",
-  },
-  {
-    titleKey: "pendingApprovals",
-    count: "09",
-    labelKey: "pending",
-    descKey: "pendingDesc",
-    icon: "/images/icons/dashboard/property/dollar.png",
-    iconBg: "#F1F7FF",
-  },
-  {
-    titleKey: "propertyViews",
-    count: "4,474",
-    labelKey: "views",
-    descKey: "viewsDesc",
-    descParams: { percentage: "+$43.14" },
-    icon: "/images/icons/dashboard/property/view-blue.png",
-    iconBg: "#F7FAFE",
-    highlight: "+$43.14",
-  },
-];
+interface StatsCardsProps {
+  stats: PropertyStats;
+}
 
-export default function StatsCards() {
+export default function StatsCards({ stats }: StatsCardsProps) {
   const t = useTranslations("Dashboard.properties.stats");
+
+  const STATS: StatItem[] = [
+    {
+      titleKey: "totalProperties",
+      count: String(stats.total),
+      labelKey: "total",
+      descKey: "totalDesc",
+      descParams: { count: stats.total },
+      icon: "/images/icons/dashboard/property/dollar.png",
+      iconBg: "#F1F7FF",
+    },
+    {
+      titleKey: "freeProperty",
+      count: String(stats.available),
+      labelKey: "free",
+      descKey: "freeDesc",
+      descParams: { count: stats.available },
+      icon: "/images/icons/dashboard/property/dollar.png",
+      iconBg: "#F1F7FF",
+    },
+    {
+      titleKey: "rentedProperty",
+      count: String(stats.rented),
+      labelKey: "rented",
+      descKey: "rentedDesc",
+      descParams: { count: stats.rented },
+      icon: "/images/icons/dashboard/property/dollar.png",
+      iconBg: "#F1F7FF",
+    },
+    {
+      titleKey: "pendingApprovals",
+      count: String(stats.pending),
+      labelKey: "pending",
+      descKey: "pendingDesc",
+      icon: "/images/icons/dashboard/property/dollar.png",
+      iconBg: "#F1F7FF",
+    },
+    {
+      titleKey: "propertyViews",
+      count: "0",
+      labelKey: "views",
+      descKey: "viewsDesc",
+      icon: "/images/icons/dashboard/property/view-blue.png",
+      iconBg: "#F7FAFE",
+    },
+  ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
@@ -100,15 +103,7 @@ export default function StatsCards() {
               </span>
 
               <p className="text-[12px] leading-[16px] tracking-[0.05em] text-[#969696]">
-                {stat.highlight
-                  ? t.rich(stat.descKey, {
-                      percentage: (chunks) => (
-                        <span className="font-medium text-success">
-                          {chunks}
-                        </span>
-                      ),
-                    })
-                  : t(stat.descKey, stat.descParams)}
+                {t(stat.descKey, stat.descParams)}
               </p>
             </div>
           </div>

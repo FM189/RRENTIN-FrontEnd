@@ -19,6 +19,7 @@ interface PropertyDescriptionProps {
   paymentHistory: KeyValueItem[];
   amenities: AmenityItem[];
   furnishing: AmenityItem[];
+  rentalFeatures: AmenityItem[];
   security: AmenityItem[];
   views: AmenityItem[];
 }
@@ -86,6 +87,7 @@ export default function PropertyDescription({
   paymentHistory,
   amenities,
   furnishing,
+  rentalFeatures = [],
   security,
   views,
 }: PropertyDescriptionProps) {
@@ -114,34 +116,53 @@ export default function PropertyDescription({
       {/* Detailed Sections - with left padding */}
       <div className="flex flex-col gap-2.5 px-0 sm:px-5">
         {/* Rental Agreement Details */}
-        <Section title={t("rentalAgreement")}>
-          <KeyValueRow items={rentalDetails} />
-        </Section>
+        {rentalDetails.length > 0 && (
+          <Section title={t("rentalAgreement")}>
+            <KeyValueRow items={rentalDetails} />
+          </Section>
+        )}
 
         {/* Payment History & Dues */}
-        <Section title={t("paymentHistory")}>
-          <KeyValueRow items={paymentHistory} />
-        </Section>
+        {paymentHistory.length > 0 && (
+          <Section title={t("paymentHistory")}>
+            <KeyValueRow items={paymentHistory} />
+          </Section>
+        )}
 
         {/* Amenities */}
-        <Section title={t("amenities")}>
-          <AmenityGrid items={amenities} columns={4} />
-        </Section>
+        {amenities.length > 0 && (
+          <Section title={t("amenities")}>
+            <AmenityGrid items={amenities} columns={4} />
+          </Section>
+        )}
 
         {/* Furnishing */}
-        <Section title={t("furnishing")}>
-          <AmenityGrid items={furnishing} columns={4} />
-        </Section>
+        {furnishing.length > 0 && (
+          <Section title={t("furnishing")}>
+            <AmenityGrid items={furnishing} columns={4} />
+          </Section>
+        )}
+
+        {/* Rental Features & Rules */}
+        {rentalFeatures.length > 0 && (
+          <Section title={t("rentalFeatures")}>
+            <AmenityGrid items={rentalFeatures} columns={4} />
+          </Section>
+        )}
 
         {/* Security and Safety */}
-        <Section title={t("securitySafety")}>
-          <AmenityGrid items={security} columns={3} />
-        </Section>
+        {security.length > 0 && (
+          <Section title={t("securitySafety")}>
+            <AmenityGrid items={security} columns={3} />
+          </Section>
+        )}
 
         {/* Views and Direction */}
-        <Section title={t("viewsDirection")}>
-          <AmenityGrid items={views} columns={4} />
-        </Section>
+        {views.length > 0 && (
+          <Section title={t("viewsDirection")}>
+            <AmenityGrid items={views} columns={4} />
+          </Section>
+        )}
       </div>
     </div>
   );

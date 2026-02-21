@@ -31,8 +31,10 @@ export default function OwnerProfile({
       }}
     >
       {/* Cover Image */}
-      <div className="relative h-[94px] w-full">
-        <Image src={coverImage} alt="" fill className="object-cover" />
+      <div className="relative h-[94px] w-full bg-[#2D313C]">
+        {coverImage ? (
+          <Image src={coverImage} alt="" fill className="object-cover" />
+        ) : null}
         <div
           className="absolute inset-0"
           style={{
@@ -49,7 +51,13 @@ export default function OwnerProfile({
           className="-mt-[52px] relative h-[103px] w-[103px] overflow-hidden rounded-full"
           style={{ border: "3.5px solid #FFFFFF" }}
         >
-          <Image src={avatar} alt={name} fill className="object-cover" />
+          {avatar ? (
+            <Image src={avatar} alt={name} fill className="object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-[#D6E3F4] text-[28px] font-semibold text-[#0245A5]">
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
       </div>
 

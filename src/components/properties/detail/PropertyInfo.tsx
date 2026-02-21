@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { formatPrice } from "@/lib/format";
 
 interface PropertyFeature {
   icon: string;
@@ -40,7 +41,7 @@ export default function PropertyInfo({
 
         {/* Price */}
         <p className="text-[43px] font-semibold leading-[51px] tracking-[0.05em] text-heading">
-          ${price}
+          ฿{formatPrice(price)}
           <span className="text-[19.5px] font-normal leading-[23px]">
             {t("perMonth")}
           </span>

@@ -49,22 +49,44 @@ function PriceMarker({
       position={{ lat: property.lat, lng: property.lng }}
       mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
     >
-      <button
-        type="button"
+      {/* Bubble + downward pointer so it looks like a map pin */}
+      <div
+        className="-translate-x-1/2 flex cursor-pointer flex-col items-center"
+        style={{ transform: "translateX(-50%) translateY(-100%)" }}
         onClick={onClick}
-        className={`-translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[12px] font-medium shadow-md ${
-          isSelected
-            ? "bg-[#0245A5] text-white"
-            : "bg-white text-heading"
-        }`}
       >
-        {property.priceLabel}
-      </button>
+        <button
+          type="button"
+          className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[12px] font-semibold shadow-md transition-colors ${
+            isSelected
+              ? "bg-[#0245A5] text-white"
+              : "bg-white text-heading hover:bg-[#0245A5] hover:text-white"
+          }`}
+        >
+          {property.priceLabel}
+        </button>
+        {/* Triangle pointer */}
+        <div
+          style={{
+            width: 0,
+            height: 0,
+            borderLeft: "6px solid transparent",
+            borderRight: "6px solid transparent",
+            borderTop: isSelected ? "8px solid #0245A5" : "8px solid white",
+          }}
+        />
+      </div>
     </OverlayView>
   );
 }
 
-function PropertyPopup({ property }: { property: MapProperty }) {
+function PropertyPopup({
+  property,
+  onClose,
+}: {
+  property: MapProperty;
+  onClose: () => void;
+}) {
   const t = useTranslations("Dashboard.properties.detailPage");
 
   return (
@@ -73,28 +95,44 @@ function PropertyPopup({ property }: { property: MapProperty }) {
       mapPaneName={OverlayView.FLOAT_PANE}
     >
       <div
-        className="-translate-x-1/2 -translate-y-full mb-3 flex w-[320px] overflow-hidden rounded-[6px] bg-white"
+        className="-translate-x-1/2 -translate-y-full mb-3 flex w-[300px] overflow-hidden rounded-[6px] bg-white"
         style={{ boxShadow: "0px 2px 12px rgba(0, 0, 0, 0.15)" }}
       >
         {/* Image */}
-        <div className="relative h-[100px] w-[120px] shrink-0">
-          <Image
-            src={property.image}
-            alt={property.title}
-            fill
-            className="object-cover"
-          />
+        <div className="relative h-[100px] w-[110px] shrink-0">
+          {property.image ? (
+            <Image
+              src={property.image}
+              alt={property.title}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-[#D6E3F4]" />
+          )}
         </div>
 
         {/* Info */}
-        <div className="flex flex-1 flex-col justify-center gap-1 px-3 py-2">
+        <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2">
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#f0f0f0] text-[10px] text-[#969696] hover:bg-[#e0e0e0]"
+          >
+            ✕
+          </button>
+
           {property.isMostDemanded && (
             <span className="text-[8px] font-bold leading-[10px] tracking-[0.02em] text-[#FDAC3B]">
               {t("mostDemanded")}
             </span>
           )}
-          <div className="flex items-start justify-between gap-1">
-            <h4 className="text-[13px] font-semibold leading-[16px] text-heading">
+          <div className="flex items-start gap-1 pr-5">
+            <h4
+              className="text-[13px] font-semibold leading-[16px] text-heading"
+              style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}
+            >
               {property.title}
             </h4>
             <span
@@ -107,7 +145,7 @@ function PropertyPopup({ property }: { property: MapProperty }) {
               {property.status === "rent" ? "Rent" : "Free"}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-1">
             <Image
               src="/images/icons/dashboard/property/location-pin.png"
               alt=""
@@ -115,13 +153,16 @@ function PropertyPopup({ property }: { property: MapProperty }) {
               height={6}
               className="shrink-0"
             />
-            <span className="truncate text-[8px] leading-[10px] text-[#969696]">
+            <span
+              className="text-[8px] leading-[10px] text-[#969696]"
+              style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}
+            >
               {property.address}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[13px] font-semibold leading-[16px] text-heading">
-              ${property.price.toFixed(2)}
+              {property.priceLabel}
               <span className="text-[8px] font-normal text-[#969696]">
                 /month
               </span>
@@ -205,7 +246,6 @@ export default function PropertyMapView({
         zoom={13}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        onClick={() => setSelectedId(null)}
         options={{
           zoomControl: true,
           zoomControlOptions: { position: 5 },
@@ -219,11 +259,30 @@ export default function PropertyMapView({
             key={property.id}
             property={property}
             isSelected={property.id === selectedId}
-            onClick={() => setSelectedId(property.id)}
+            onClick={() =>
+              setSelectedId(property.id === selectedId ? null : property.id)
+            }
           />
         ))}
 
-        {selectedProperty && <PropertyPopup property={selectedProperty} />}
+        {/* Invisible Marker at exact pin point so click target is precise */}
+        {properties.map((property) => (
+          <Marker
+            key={`pin-${property.id}`}
+            position={{ lat: property.lat, lng: property.lng }}
+            opacity={0}
+            onClick={() =>
+              setSelectedId(property.id === selectedId ? null : property.id)
+            }
+          />
+        ))}
+
+        {selectedProperty && (
+          <PropertyPopup
+            property={selectedProperty}
+            onClose={() => setSelectedId(null)}
+          />
+        )}
       </GoogleMap>
     </div>
   );

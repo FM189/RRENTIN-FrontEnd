@@ -5,9 +5,8 @@ import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useTranslations } from "next-intl";
 
 interface PropertyGoogleMapProps {
-  latitude: number | null;
-  longitude: number | null;
-  onLocationChange: (lat: number, lng: number) => void;
+  location: { type: "Point"; coordinates: [number, number] }; // [lng, lat]
+  onLocationChange: (location: { type: "Point"; coordinates: [number, number] }) => void;
 }
 
 const containerStyle = {
@@ -22,10 +21,11 @@ const defaultCenter = {
 };
 
 export default function PropertyGoogleMap({
-  latitude,
-  longitude,
+  location,
   onLocationChange,
 }: PropertyGoogleMapProps) {
+  const [lng, lat] = location.coordinates;
+  const hasCoords = lng !== 0 || lat !== 0;
   const t = useTranslations("Dashboard.properties.addPropertyPage");
 
   const { isLoaded } = useJsApiLoader({
@@ -45,12 +45,14 @@ export default function PropertyGoogleMap({
 
   const handleClick = (e: google.maps.MapMouseEvent) => {
     if (e.latLng) {
-      onLocationChange(e.latLng.lat(), e.latLng.lng());
+      onLocationChange({
+        type: "Point",
+        coordinates: [e.latLng.lng(), e.latLng.lat()],
+      });
     }
   };
 
-  const center =
-    latitude && longitude ? { lat: latitude, lng: longitude } : defaultCenter;
+  const center = hasCoords ? { lat, lng } : defaultCenter;
 
   if (!isLoaded) {
     return (
@@ -71,13 +73,13 @@ export default function PropertyGoogleMap({
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
-        zoom={latitude && longitude ? 15 : 11}
+        zoom={hasCoords ? 15 : 11}
         onLoad={onLoad}
         onUnmount={onUnmount}
         onClick={handleClick}
       >
-        {latitude && longitude && (
-          <Marker position={{ lat: latitude, lng: longitude }} />
+        {hasCoords && (
+          <Marker position={{ lat, lng }} />
         )}
       </GoogleMap>
     </div>

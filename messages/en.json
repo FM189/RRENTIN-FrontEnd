@@ -173,21 +173,28 @@
         "totalDesc": "You have {count} properties in your portfolio",
         "freeProperty": "Free Property",
         "free": "Free",
-        "freeDesc": "{count} properties are actively rented out",
+        "freeDesc": "{count} properties are currently free for rent",
         "rentedProperty": "Rented Property",
         "rented": "Rented",
-        "rentedDesc": "{count} properties are currently free for rent",
+        "rentedDesc": "{count} properties are actively rented out",
         "pendingApprovals": "Pending Approvals",
         "pending": "Pending",
         "pendingDesc": "These properties are waiting for admin approval to go live",
         "propertyViews": "Property Views",
         "views": "Views",
-        "viewsDesc": "It's <percentage>+$43.14</percentage> better then last month."
+        "viewsDesc": "Views data will be available soon."
       },
       "myProperties": "My Properties",
       "searchProperties": "properties",
       "status": "Status",
       "type": "Type",
+      "allStatuses": "All Statuses",
+      "statusAvailable": "Available",
+      "statusRented": "Rented",
+      "statusUnavailable": "Unavailable",
+      "allTypes": "All Types",
+      "noProperties": "No properties found",
+      "noPropertiesDesc": "Try adjusting your search or filters",
       "mapView": "Map View",
       "gridView": "Grid View",
       "mostDemanded": "Most Demanded Property",
@@ -199,6 +206,8 @@
         "bed": "Bed",
         "baths": "Baths",
         "sqm": "Sqm",
+        "sqft": "Sqft",
+        "sqw": "Sq.Wah",
         "floors": "Floors",
         "edit": "Edit",
         "morePhotos": "+{count}",
@@ -219,6 +228,7 @@
         "furnishing": "Furnishing",
         "securitySafety": "Security and Safety",
         "viewsDirection": "Views and Direction",
+        "rentalFeatures": "Rental Features & Rules",
         "reviews": "Reviews",
         "averageRating": "Average Rating",
         "avgRatingYear": "Average Rating on this Year",
@@ -229,6 +239,7 @@
       },
       "addPropertyPage": {
         "pageTitle": "Add Property",
+        "editPageTitle": "Edit Property",
         "steps": {
           "basicInfo": "Basic Info",
           "propertyInfo": "Property Info",
@@ -421,6 +432,14 @@
             "land_title_deed": "Land Title Deed",
             "purchase_contract": "Purchase Contract",
             "utility_bill": "Utility bill or receipt (water/electricity)"
+          },
+          "uploading": "Uploading...",
+          "errors": {
+            "invalidType": "Invalid file type",
+            "tooLarge": "File exceeds {mb} MB limit",
+            "photosRequired": "Please upload at least one property image",
+            "verificationRequired": "Please select an ownership verification type",
+            "documentsRequired": "Please upload at least one ownership document"
           }
         },
         "step5": {
@@ -435,6 +454,7 @@
           "month": "Month",
           "addContract": "+ Add contract",
           "addProperty": "Add Property",
+          "updateProperty": "Update Property",
           "maxContractsReached": "Maximum {max} contracts allowed"
         },
         "errors": {
@@ -527,7 +547,7 @@
         "leaseEndingDesc": "These tenants have leases expiring within the next 30 days.",
         "propertyViews": "Property Views",
         "views": "Views",
-        "viewsDesc": "It's <percentage>+$43.14</percentage> better then last month."
+        "viewsDesc": "Views data will be available soon."
       }
     },
     "agents": {
@@ -554,14 +574,37 @@
         "pendingDesc": "These agents have not yet responded to your hiring request.",
         "propertyViews": "Property Views",
         "views": "Views",
-        "viewsDesc": "It's <percentage>+$43.14</percentage> better then last month."
+        "viewsDesc": "Views data will be available soon."
       },
       "detailPage": {
         "agentProfile": "Agent Profile",
         "basicDetails": "Basic Details",
         "linkedBuildings": "Linked Buildings",
         "transaction": "Transaction",
-        "message": "Message"
+        "message": "Message",
+        "experienceTitle": "Experience, Services and Availability",
+        "experienceLabel": "Experience",
+        "serviceChargesLabel": "Service Charges",
+        "reviews": "Reviews",
+        "readMore": "Read More",
+        "linkedPropertiesTitle": "Linked Properties",
+        "colProperties": "Properties",
+        "colMonthlyRent": "Monthly Rent",
+        "colStartEnd": "Start - End",
+        "colRole": "Role",
+        "colCommission": "Commission",
+        "colPaymentStatus": "Payment Status",
+        "mostDemanding": "Most Demanding property",
+        "perMonth": "Per month",
+        "statusPending": "Pending",
+        "statusPaid": "Paid",
+        "statusRejected": "Rejected",
+        "transactionHistory": "Transaction History",
+        "colInvoiceId": "Invoice ID",
+        "colDate": "Date",
+        "colAmount": "Amount",
+        "colSlip": "Slip",
+        "view": "View"
       }
     }
   },
