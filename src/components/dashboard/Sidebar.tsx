@@ -30,7 +30,7 @@ const ownerMenu: MenuItem[] = [
 
 const tenantMenu: MenuItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: "dashboard-circle" },
-  { labelKey: "properties", href: "/dashboard/tenant/properties", icon: "properties" },
+  { labelKey: "browse-properties", href: "/dashboard/tenant/properties", icon: "browse-properties" },
   { labelKey: "myRentals", href: "/dashboard/tenant/rentals" },
   { labelKey: "favorites", href: "/dashboard/tenant/favorites" },
   { labelKey: "payments", href: "/dashboard/tenant/payments" },

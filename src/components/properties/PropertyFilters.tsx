@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import FilterDropdown from "@/components/ui/FilterDropdown";
 
 interface PropertyFiltersProps {
   viewMode: "grid" | "map";
@@ -14,16 +15,10 @@ interface PropertyFiltersProps {
   onTypeChange: (value: string) => void;
 }
 
-const SELECT_BASE =
-  "h-10 shrink-0 cursor-pointer appearance-none rounded-[4px] bg-white pl-5 pr-9 text-[14px] leading-4 tracking-[0.05em] focus:outline-none";
-
-const SELECT_STYLE = {
+const DROPDOWN_BUTTON_CLASS = "h-10 rounded-[4px]";
+const DROPDOWN_BUTTON_STYLE = {
   border: "1px solid rgba(220, 220, 220, 0.3)",
   boxShadow: "0px 2px 12px rgba(53, 130, 231, 0.06)",
-  backgroundImage: "url('/images/icons/dashboard/property/chevron-down.png')",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "calc(100% - 10px) center",
-  backgroundSize: "11px 6px",
 };
 
 export default function PropertyFilters({
@@ -38,6 +33,22 @@ export default function PropertyFilters({
 }: PropertyFiltersProps) {
   const t = useTranslations("Dashboard.properties");
   const tTypes = useTranslations("Dashboard.properties.addPropertyPage.propertyTypes");
+
+  const statusOptions = [
+    { value: "available",   label: t("statusAvailable")   },
+    { value: "rented",      label: t("statusRented")      },
+    { value: "unavailable", label: t("statusUnavailable") },
+  ];
+
+  const typeOptions = [
+    { value: "house",        label: tTypes("house")        },
+    { value: "villa",        label: tTypes("villa")        },
+    { value: "condo",        label: tTypes("condo")        },
+    { value: "apartment",    label: tTypes("apartment")    },
+    { value: "townhouse",    label: tTypes("townhouse")    },
+    { value: "retail_space", label: tTypes("retail_space") },
+    { value: "office",       label: tTypes("office")       },
+  ];
 
   return (
     <div>
@@ -86,39 +97,29 @@ export default function PropertyFilters({
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={t("searchProperties")}
-              className="w-full border-none bg-transparent text-[14px] leading-4 tracking-[0.05em] text-text shadow-none placeholder:text-[rgba(150,150,150,0.7)] focus:ring-0 focus:[outline:none] focus-visible:[outline:none]"
+              className="w-full border-none bg-transparent text-[14px] leading-4 tracking-[0.05em] text-text shadow-none outline-none placeholder:text-[rgba(150,150,150,0.7)] focus:ring-0 focus:outline-none"
             />
           </div>
 
           {/* Status Dropdown */}
-          <select
+          <FilterDropdown
             value={statusValue}
-            onChange={(e) => onStatusChange(e.target.value)}
-            className={`${SELECT_BASE} text-[#969696]`}
-            style={SELECT_STYLE}
-          >
-            <option value="">{t("allStatuses")}</option>
-            <option value="available">{t("statusAvailable")}</option>
-            <option value="rented">{t("statusRented")}</option>
-            <option value="unavailable">{t("statusUnavailable")}</option>
-          </select>
+            placeholder={t("allStatuses")}
+            options={statusOptions}
+            onChange={onStatusChange}
+            buttonClassName={DROPDOWN_BUTTON_CLASS}
+            buttonStyle={DROPDOWN_BUTTON_STYLE}
+          />
 
           {/* Type Dropdown */}
-          <select
+          <FilterDropdown
             value={typeValue}
-            onChange={(e) => onTypeChange(e.target.value)}
-            className={`${SELECT_BASE} text-[#969696]`}
-            style={SELECT_STYLE}
-          >
-            <option value="">{t("allTypes")}</option>
-            <option value="house">{tTypes("house")}</option>
-            <option value="villa">{tTypes("villa")}</option>
-            <option value="condo">{tTypes("condo")}</option>
-            <option value="apartment">{tTypes("apartment")}</option>
-            <option value="townhouse">{tTypes("townhouse")}</option>
-            <option value="retail_space">{tTypes("retail_space")}</option>
-            <option value="office">{tTypes("office")}</option>
-          </select>
+            placeholder={t("allTypes")}
+            options={typeOptions}
+            onChange={onTypeChange}
+            buttonClassName={DROPDOWN_BUTTON_CLASS}
+            buttonStyle={DROPDOWN_BUTTON_STYLE}
+          />
         </div>
 
         {/* Right: View Toggle */}
@@ -127,9 +128,7 @@ export default function PropertyFilters({
             type="button"
             onClick={() => onViewModeChange("map")}
             className={`flex h-7.5 items-center gap-1.5 rounded-[4px] px-2 ${
-              viewMode === "map"
-                ? "bg-primary"
-                : "bg-[rgba(124,132,141,0.7)]"
+              viewMode === "map" ? "bg-primary" : "bg-[rgba(124,132,141,0.7)]"
             }`}
           >
             <Image
@@ -147,9 +146,7 @@ export default function PropertyFilters({
             type="button"
             onClick={() => onViewModeChange("grid")}
             className={`flex h-7.5 items-center gap-1.5 rounded-[4px] px-2 ${
-              viewMode === "grid"
-                ? "bg-primary"
-                : "bg-[rgba(124,132,141,0.7)]"
+              viewMode === "grid" ? "bg-primary" : "bg-[rgba(124,132,141,0.7)]"
             }`}
           >
             <Image

@@ -160,9 +160,7 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1 });
-UserSchema.index({ googleId: 1 }, { sparse: true });
 
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
