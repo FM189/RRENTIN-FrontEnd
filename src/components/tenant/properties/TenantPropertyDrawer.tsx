@@ -8,6 +8,9 @@ import { GoogleMap, useJsApiLoader, Marker, OverlayView } from "@react-google-ma
 import { formatPrice } from "@/lib/format";
 import { getTenantPropertyDetail } from "@/actions/tenant-properties";
 import type { TenantPropertyDetail } from "@/actions/tenant-properties";
+import { VisitConfirmationModal, VisitRequestModal, VisitPaymentModal } from "@/components/ui";
+import type { VisitRequestFormData } from "@/components/ui";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 interface TenantPropertyDrawerProps {
   propertyId: string | null;
@@ -123,10 +126,15 @@ function DrawerMap({ detail }: { detail: TenantPropertyDetail }) {
 export default function TenantPropertyDrawer({ propertyId, onClose }: TenantPropertyDrawerProps) {
   const t = useTranslations("Dashboard.tenantProperties.drawer");
   const router = useRouter();
+  const { user } = useCurrentUser();
 
   const [detail, setDetail] = useState<TenantPropertyDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "reviews">("overview");
+  const [visitModalOpen,        setVisitModalOpen]        = useState(false);
+  const [visitRequestModalOpen, setVisitRequestModalOpen] = useState(false);
+  const [visitPaymentModalOpen, setVisitPaymentModalOpen] = useState(false);
+  const [visitFormData,         setVisitFormData]         = useState<VisitRequestFormData | null>(null);
 
   const isOpen = !!propertyId;
 
@@ -156,6 +164,27 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
     if (detail.unitArea)
       stats.push({ icon: "/images/icons/dashboard/tenant-properties/area-white.png", label: `${detail.unitArea} ${detail.unitAreaUnit}` });
   }
+
+  const handleVisitConfirm = () => {
+    setVisitModalOpen(false);
+    setVisitRequestModalOpen(true);
+  };
+
+  const handleVisitRequestNext = (data: VisitRequestFormData) => {
+    setVisitRequestModalOpen(false);
+    setVisitFormData(data);
+    setVisitPaymentModalOpen(true);
+  };
+
+  const handlePaymentBack = () => {
+    setVisitPaymentModalOpen(false);
+    setVisitRequestModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setVisitPaymentModalOpen(false);
+    setVisitFormData(null);
+  };
 
   return (
     <>
@@ -250,7 +279,7 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
                   </span>
                   {detail.minRentPrice > 0 && (
                     <span className="shrink-0 text-[22px] font-semibold leading-[26px] tracking-[0.05em] text-[#32343C]">
-                      ฿{formatPrice(detail.minRentPrice)}
+                      {formatPrice(detail.minRentPrice)}
                       <span className="text-sm font-normal text-[#969696]">/month</span>
                     </span>
                   )}
@@ -327,7 +356,7 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
                   <div className="flex gap-2.5">
                     <button
                       type="button"
-                      onClick={() => propertyId && router.push(`/dashboard/tenant/properties/${propertyId}`)}
+                      onClick={() => setVisitModalOpen(true)}
                       className="flex flex-1 items-center justify-center rounded-lg py-3 text-sm font-semibold leading-4 tracking-[0.05em] text-white transition-opacity hover:opacity-90"
                       style={{ background: "#5390E0", boxShadow: "0px 0px 2px rgba(0,0,0,0.25)" }}
                     >
@@ -369,6 +398,39 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
           )}
         </div>
       </div>
+
+      {/* Step 1: Confirm visit fee */}
+      <VisitConfirmationModal
+        isOpen={visitModalOpen}
+        visitFee={detail?.visitRequestPrice ?? ""}
+        propertyId={detail?.id ?? ""}
+        tenantId={user?.id ?? ""}
+        onClose={() => setVisitModalOpen(false)}
+        onConfirm={handleVisitConfirm}
+      />
+
+      {/* Step 2: Visit request form */}
+      {detail && (
+        <VisitRequestModal
+          isOpen={visitRequestModalOpen}
+          detail={detail}
+          onClose={() => setVisitRequestModalOpen(false)}
+          onNext={handleVisitRequestNext}
+        />
+      )}
+
+      {/* Step 3: Payment */}
+      {detail && visitFormData && (
+        <VisitPaymentModal
+          isOpen={visitPaymentModalOpen}
+          detail={detail}
+          requestData={visitFormData}
+          tenantId={user?.id ?? ""}
+          onClose={() => setVisitPaymentModalOpen(false)}
+          onBack={handlePaymentBack}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </>
   );
 }

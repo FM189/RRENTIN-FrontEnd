@@ -87,12 +87,12 @@ export default function TenantPropertyCard({ property, onCardClick }: TenantProp
           <div className="flex flex-wrap items-baseline justify-between gap-1">
             {property.propertyPrice && (
               <span className="text-lg font-semibold leading-[26px] tracking-[0.05em] text-[#32343C]">
-                ฿{formatPrice(property.propertyPrice)}
+                {formatPrice(property.propertyPrice)}
               </span>
             )}
             {property.minRentPrice > 0 && (
               <span className="text-base font-semibold leading-[23px] tracking-[0.05em] text-[#32343C]">
-                ฿{formatPrice(property.minRentPrice)}
+                {formatPrice(property.minRentPrice)}
                 <span className="text-[11px] font-normal text-[#969696]">
                   {t("perMonth")}
                 </span>

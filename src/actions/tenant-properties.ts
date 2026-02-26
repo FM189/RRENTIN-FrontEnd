@@ -422,12 +422,17 @@ export async function getTenantPropertiesMap({
 
 export interface TenantPropertyDetail {
   id: string;
+  ownerId: string;
   title: string;
   type: string;
   description: string;
   address: string;
   province: string;
   minRentPrice: number;
+  visitRequestPrice: string;
+  showingDates: string[];
+  showingTimeFrom: string;
+  showingTimeTo: string;
   bedrooms: number;
   bathrooms: number;
   unitArea: string;
@@ -442,7 +447,7 @@ export async function getTenantPropertyDetail(id: string): Promise<TenantPropert
 
   try {
     const doc = await Property.findById(id)
-      .select("propertyTitle propertyType description address province bedrooms bathrooms unitArea unitAreaUnit floor photos contracts location")
+      .select("owner propertyTitle propertyType description address province bedrooms bathrooms unitArea unitAreaUnit floor photos contracts location visitRequestPrice showingDates showingTimeFrom showingTimeTo")
       .lean();
 
     if (!doc) return null;
@@ -457,6 +462,7 @@ export async function getTenantPropertyDetail(id: string): Promise<TenantPropert
 
     return {
       id:           String(doc._id),
+      ownerId:      String((doc as unknown as { owner?: unknown }).owner ?? ""),
       title:        String(doc.propertyTitle ?? ""),
       type:         String(doc.propertyType  ?? ""),
       description:  String(doc.description   ?? ""),
@@ -467,9 +473,13 @@ export async function getTenantPropertyDetail(id: string): Promise<TenantPropert
       bathrooms:    Number(doc.bathrooms   ?? 0),
       unitArea:     String(doc.unitArea    ?? ""),
       unitAreaUnit: String(doc.unitAreaUnit ?? "sqm"),
-      floor:        Number(doc.floor       ?? 0),
-      photos:       (doc.photos ?? []) as string[],
-      coordinates:  (lng !== 0 || lat !== 0) ? [lng, lat] : null,
+      floor:             Number(doc.floor       ?? 0),
+      photos:            (doc.photos ?? []) as string[],
+      coordinates:       (lng !== 0 || lat !== 0) ? [lng, lat] : null,
+      visitRequestPrice: String((doc as unknown as { visitRequestPrice?: string }).visitRequestPrice ?? ""),
+      showingDates:      ((doc as unknown as { showingDates?: string[] }).showingDates ?? []) as string[],
+      showingTimeFrom:   String((doc as unknown as { showingTimeFrom?: string }).showingTimeFrom ?? ""),
+      showingTimeTo:     String((doc as unknown as { showingTimeTo?: string }).showingTimeTo ?? ""),
     };
   } catch {
     return null;

@@ -29,6 +29,8 @@ export default function DashboardHeader() {
   const slugToKey: Record<string, string> = {
     "on-demand-service": "onDemandService",
     "my-rentals": "myRentals",
+    "visit-requests": "visitRequests",
+    "browse-properties": "browse-properties",
   };
   const menuKey = slugToKey[lastSegment] ?? lastSegment;
 

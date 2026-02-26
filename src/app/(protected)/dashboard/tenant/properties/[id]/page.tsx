@@ -8,7 +8,8 @@ import PropertyDescription from "@/components/properties/detail/PropertyDescript
 import OwnerProfile from "@/components/properties/detail/OwnerProfile";
 import ReviewsSection from "@/components/properties/detail/ReviewsSection";
 import PropertyMapView from "@/components/properties/detail/PropertyMapView";
-import { getTenantPropertyDetailFull } from "@/actions/tenant-properties";
+import { getTenantPropertyDetailFull, getTenantPropertyDetail } from "@/actions/tenant-properties";
+import type { TenantPropertyDetail } from "@/actions/tenant-properties";
 import { formatPrice } from "@/lib/format";
 import {
   getAmenityIcon,
@@ -27,7 +28,10 @@ export default async function TenantPropertyDetailPage({ params }: PageProps) {
   const { id } = await params;
   const t = await getTranslations("Dashboard.tenantProperties.detailPage");
 
-  const property = await getTenantPropertyDetailFull(id);
+  const [property, visitDetail] = await Promise.all([
+    getTenantPropertyDetailFull(id),
+    getTenantPropertyDetail(id),
+  ]);
   if (!property) notFound();
 
   // ── Feature rows (bed / bath / sqm / floor) ──────────────────────────────
@@ -58,14 +62,14 @@ export default async function TenantPropertyDetailPage({ params }: PageProps) {
   const firstContract = property.contracts[0];
   const rentalDetails = firstContract
     ? [
-      { labelKey: "monthlyRent", value: `฿${formatPrice(firstContract.rentPrice)}` },
+      { labelKey: "monthlyRent", value: `${formatPrice(firstContract.rentPrice)}` },
       { labelKey: "minLeaseDuration", value: `${firstContract.months} Month${firstContract.months > 1 ? "s" : ""}` },
-      { labelKey: "securityDeposit", value: `฿${formatPrice(firstContract.securityDeposit)}` },
+      { labelKey: "securityDeposit", value: `${formatPrice(firstContract.securityDeposit)}` },
       { labelKey: "renewalOption", value: "Yes" },
       { labelKey: "renewalNotice", value: "7 Days" },
     ]
     : [
-      { labelKey: "monthlyRent", value: `฿${formatPrice(property.price)}` },
+      { labelKey: "monthlyRent", value: `${formatPrice(property.price)}` },
       { labelKey: "minLeaseDuration", value: "—" },
       { labelKey: "securityDeposit", value: "—" },
       { labelKey: "renewalOption", value: "—" },
@@ -119,7 +123,7 @@ export default async function TenantPropertyDetailPage({ params }: PageProps) {
     title: property.title,
     address: property.address,
     price: property.priceNum,
-    priceLabel: `฿${formatPrice(property.price)}`,
+    priceLabel: `${formatPrice(property.price)}`,
     rating: 4.9,
     image: property.images[0] ?? "",
     status: property.propertyStatus === "rented" ? "rent" : "free" as "rent" | "free",
@@ -158,7 +162,7 @@ export default async function TenantPropertyDetailPage({ params }: PageProps) {
           />
         </div>
         <div className="mt-[14px] px-4 lg:px-6">
-          <TenantPropertyActions />
+          <TenantPropertyActions visitDetail={visitDetail} />
         </div>
       </div>
 

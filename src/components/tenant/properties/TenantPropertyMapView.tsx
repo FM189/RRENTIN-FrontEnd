@@ -104,7 +104,7 @@ function PropertyPopup({
             {/* Price */}
             {property.minRentPrice > 0 && (
               <span className="text-[13px] font-semibold leading-[16px] text-heading">
-                ฿{formatPrice(property.minRentPrice)}
+                {formatPrice(property.minRentPrice)}
                 <span className="text-[8px] font-normal text-[#969696]">/month</span>
               </span>
             )}

@@ -134,7 +134,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           {/* Price + Rating */}
           <div className="flex items-center justify-between">
             <span className="text-[15px] font-semibold leading-[18px] tracking-[0.05em] text-heading">
-              ฿{formatPrice(property.price)}
+              {formatPrice(property.price)}
               <span className="text-[8.5px] font-normal leading-[10px] text-[#969696]">
                 /{t("perMonth")}
               </span>

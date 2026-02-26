@@ -6,6 +6,8 @@ const publicRoutes = [
   "/service-provider/onboarding",
   "/api/health",
   "/api/auth",
+  "/api/webhooks",
+  "/api/scan-qr",
 ];
 
 const authRoutes = ["/login", "/signup"];

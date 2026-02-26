@@ -60,7 +60,7 @@ export default function TenantContractsSection({ contracts }: TenantContractsSec
 
                 {/* Col 2: Price */}
                 <span className="text-[20px] font-bold leading-[24px] tracking-[0.05em] text-primary">
-                  ฿{formatPrice(contract.rentPrice)}
+                  {formatPrice(contract.rentPrice)}
                 </span>
 
                 {/* Col 3: Meta */}
@@ -70,7 +70,7 @@ export default function TenantContractsSection({ contracts }: TenantContractsSec
                     <span>{benefit}% {t("benefits")}</span>
                   )}
                   <span>
-                    ฿{formatPrice(contract.securityDeposit)}{" "}
+                    {formatPrice(contract.securityDeposit)}{" "}
                     <span className="font-bold text-[#32343C]">{t("advance")}</span>
                   </span>
                 </div>
@@ -83,7 +83,7 @@ export default function TenantContractsSection({ contracts }: TenantContractsSec
                     {t("deal")} {index + 1}
                   </span>
                   <span className="text-[18px] font-bold leading-[22px] tracking-[0.05em] text-primary">
-                    ฿{formatPrice(contract.rentPrice)}
+                    {formatPrice(contract.rentPrice)}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] leading-[15px] tracking-[0.04em] text-[#969696]">
@@ -92,7 +92,7 @@ export default function TenantContractsSection({ contracts }: TenantContractsSec
                     <span>{benefit}% {t("benefits")}</span>
                   )}
                   <span>
-                    ฿{formatPrice(contract.securityDeposit)}{" "}
+                    {formatPrice(contract.securityDeposit)}{" "}
                     <span className="font-bold text-[#32343C]">{t("advance")}</span>
                   </span>
                 </div>

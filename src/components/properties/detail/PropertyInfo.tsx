@@ -41,7 +41,7 @@ export default function PropertyInfo({
 
         {/* Price */}
         <p className="text-[43px] font-semibold leading-[51px] tracking-[0.05em] text-heading">
-          ฿{formatPrice(price)}
+          {formatPrice(price)}
           <span className="text-[19.5px] font-normal leading-[23px]">
             {t("perMonth")}
           </span>

@@ -17,6 +17,7 @@ interface MenuItem {
 const ownerMenu: MenuItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: "dashboard-circle" },
   { labelKey: "properties", href: "/dashboard/owner/properties", icon: "properties" },
+  { labelKey: "visitRequests", href: "/dashboard/owner/visit-requests" },
   { labelKey: "tenants", href: "/dashboard/owner/tenants", icon:"tenants" },
   { labelKey: "agents", href: "/dashboard/owner/agents", icon:"agents" },
   { labelKey: "onDemandService", href: "/dashboard/owner/on-demand-service" },
@@ -32,6 +33,7 @@ const tenantMenu: MenuItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: "dashboard-circle" },
   { labelKey: "browse-properties", href: "/dashboard/tenant/properties", icon: "browse-properties" },
   { labelKey: "myRentals", href: "/dashboard/tenant/rentals" },
+  { labelKey: "visitRequests", href: "/dashboard/tenant/visit-requests" },
   { labelKey: "favorites", href: "/dashboard/tenant/favorites" },
   { labelKey: "payments", href: "/dashboard/tenant/payments" },
   { labelKey: "notification", href: "/dashboard/tenant/notification" },

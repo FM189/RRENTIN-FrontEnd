@@ -135,7 +135,7 @@ function PropertyPopup({
 
             {/* Price */}
             <span className="text-[13px] font-semibold leading-[16px] text-heading">
-              ฿{formatPrice(property.price)}
+              {formatPrice(property.price)}
               <span className="text-[8px] font-normal text-[#969696]">/month</span>
             </span>
           </div>

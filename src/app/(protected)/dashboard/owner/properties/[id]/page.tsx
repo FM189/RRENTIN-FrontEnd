@@ -57,14 +57,14 @@ export default async function PropertyDetailPage({ params }: PageProps) {
   const firstContract = property.contracts[0];
   const rentalDetails = firstContract
     ? [
-        { labelKey: "monthlyRent",     value: `฿${formatPrice(firstContract.rentPrice)}` },
+        { labelKey: "monthlyRent",     value: `${formatPrice(firstContract.rentPrice)}` },
         { labelKey: "minLeaseDuration", value: `${firstContract.months} Month${firstContract.months > 1 ? "s" : ""}` },
-        { labelKey: "securityDeposit", value: `฿${formatPrice(firstContract.securityDeposit)}` },
+        { labelKey: "securityDeposit", value: `${formatPrice(firstContract.securityDeposit)}` },
         { labelKey: "renewalOption",   value: "Yes" },
         { labelKey: "renewalNotice",   value: "7 Days" },
       ]
     : [
-        { labelKey: "monthlyRent",     value: `฿${formatPrice(property.price)}` },
+        { labelKey: "monthlyRent",     value: `${formatPrice(property.price)}` },
         { labelKey: "minLeaseDuration", value: "—" },
         { labelKey: "securityDeposit", value: "—" },
         { labelKey: "renewalOption",   value: "—" },
@@ -119,7 +119,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
     title: property.title,
     address: property.address,
     price: property.priceNum,
-    priceLabel: `฿${formatPrice(property.price)}`,
+    priceLabel: `${formatPrice(property.price)}`,
     rating: 4.9,
     image: property.images[0] ?? "",
     status: property.propertyStatus === "rented" ? "rent" : "free" as "rent" | "free",
