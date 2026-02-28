@@ -88,7 +88,7 @@ const VisitRequestSchema = new Schema<IVisitRequest>(
     },
 
     escrow: {
-      status:           { type: String, enum: ["held", "released", "refunded"], default: "held" },
+      status:           { type: String, enum: ["held", "pending_release", "released", "refunded"], default: "held" },
       stripeTransferId: { type: String, default: "" },
       releasedAt:       { type: Date,   default: null },
     },

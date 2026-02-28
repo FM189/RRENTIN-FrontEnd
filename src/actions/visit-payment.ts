@@ -3,8 +3,6 @@
 import Stripe from "stripe";
 import dbConnect from "@/lib/mongodb";
 import VisitRequest from "@/models/VisitRequest";
-import { getActivePlatformFees } from "@/actions/platform-fees";
-import { calculateFees } from "@/lib/fees";
 import type { VisitRequestFormData } from "@/components/ui/VisitRequestModal";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-01-28.clover" });
@@ -23,15 +21,13 @@ export interface VisitPaymentResult {
 }
 
 // Step 1 — called when payment modal opens.
-// Only creates the Stripe PaymentIntent. No DB write yet.
+// Charges visit fee only — no platform fee, VAT, or processing fee.
 export async function createVisitPaymentIntent(
   baseAmount:  number,
   propertyId:  string,
   title:       string,
 ): Promise<VisitPaymentResult> {
-  const rates     = await getActivePlatformFees();
-  const breakdown = calculateFees(baseAmount, rates);
-  const totalCents = Math.round(breakdown.total * 100);
+  const totalCents = Math.round(baseAmount * 100);
 
   const paymentIntent = await stripe.paymentIntents.create({
     amount:   totalCents,
@@ -44,13 +40,13 @@ export async function createVisitPaymentIntent(
   return {
     clientSecret:    paymentIntent.client_secret!,
     paymentIntentId: paymentIntent.id,
-    total:           breakdown.total,
+    total:           baseAmount,
     breakdown: {
-      subtotal:    breakdown.subtotal,
-      platformFee: breakdown.platformFee,
-      vat:         breakdown.vat,
-      stripeFee:   breakdown.stripeFee,
-      total:       breakdown.total,
+      subtotal:    baseAmount,
+      platformFee: 0,
+      vat:         0,
+      stripeFee:   0,
+      total:       baseAmount,
     },
   };
 }
@@ -68,8 +64,10 @@ export async function createPendingVisitRequestForRedirect(
 ): Promise<{ visitRequestId: string }> {
   await dbConnect();
 
-  const rates     = await getActivePlatformFees();
-  const breakdown = calculateFees(baseAmount, rates);
+  // Idempotent — if a doc for this PI already exists (e.g. user cancelled Google Pay
+  // and retried with card), reuse it instead of creating a duplicate.
+  const existing = await VisitRequest.findOne({ "payment.stripePaymentIntentId": paymentIntentId });
+  if (existing) return { visitRequestId: String(existing._id) };
 
   const doc = await VisitRequest.create({
     tenantId,
@@ -87,10 +85,10 @@ export async function createPendingVisitRequestForRedirect(
     preferredTime: requestData.selectedTime,
     visitFee:      baseAmount,
     feeBreakdown: {
-      platformFee: breakdown.platformFee,
-      vat:         breakdown.vat,
-      stripeFee:   breakdown.stripeFee,
-      total:       breakdown.total,
+      platformFee: 0,
+      vat:         0,
+      stripeFee:   0,
+      total:       baseAmount,
     },
     payment: {
       stripePaymentIntentId: paymentIntentId,
@@ -132,9 +130,6 @@ export async function confirmVisitRequest(
     throw new Error("You already have an active visit request for this property.");
   }
 
-  const rates     = await getActivePlatformFees();
-  const breakdown = calculateFees(baseAmount, rates);
-
   const doc = await VisitRequest.create({
     tenantId,
     ownerId,
@@ -151,10 +146,10 @@ export async function confirmVisitRequest(
     preferredTime: requestData.selectedTime,
     visitFee:      baseAmount,
     feeBreakdown: {
-      platformFee: breakdown.platformFee,
-      vat:         breakdown.vat,
-      stripeFee:   breakdown.stripeFee,
-      total:       breakdown.total,
+      platformFee: 0,
+      vat:         0,
+      stripeFee:   0,
+      total:       baseAmount,
     },
     payment: {
       stripePaymentIntentId: paymentIntentId,

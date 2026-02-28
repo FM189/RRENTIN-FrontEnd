@@ -5,6 +5,7 @@ import VisitRequest from "@/models/VisitRequest";
 import Transaction from "@/models/Transaction";
 import Invoice, { nextInvoiceNumber } from "@/models/Invoice";
 import User from "@/models/User";
+import { generateAndStoreInvoicePdf } from "@/lib/invoiceApi";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-01-28.clover" });
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -42,12 +43,8 @@ export async function POST(request: NextRequest) {
       );
 
       if (doc) {
-        const totalPaid      = pi.amount / 100;
-        const visitFee       = doc.visitFee ?? 0;
-        const platformEarned =
-          (doc.feeBreakdown?.platformFee ?? 0) +
-          (doc.feeBreakdown?.vat         ?? 0) +
-          (doc.feeBreakdown?.stripeFee   ?? 0);
+        const totalPaid = pi.amount / 100;
+        const visitFee  = doc.visitFee ?? 0;
 
         // Fetch tenant info for invoice
         const tenant = await User.findById(doc.tenantId)
@@ -59,9 +56,6 @@ export async function POST(request: NextRequest) {
           : "";
 
         const invoiceNumber = await nextInvoiceNumber();
-
-        // Line items — visit fee goes to owner (no VAT), platform fee has VAT baked in
-        const vat = doc.feeBreakdown?.vat ?? 0;
 
         await Promise.all([
           // Transactions
@@ -78,17 +72,6 @@ export async function POST(request: NextRequest) {
               description:   `Visit payment for property ${doc.propertyId}`,
             },
             {
-              type:          "platform_fee",
-              userId:        null,
-              referenceId:   doc._id,
-              referenceType: "visit_request",
-              propertyId:    doc.propertyId,
-              amount:        platformEarned,
-              stripeRef:     pi.id,
-              status:        "completed",
-              description:   `Platform fee from visit request ${doc._id}`,
-            },
-            {
               type:          "escrow_hold",
               userId:        doc.ownerId,
               referenceId:   doc._id,
@@ -101,7 +84,7 @@ export async function POST(request: NextRequest) {
             },
           ]),
 
-          // Invoice for tenant
+          // Invoice for tenant — visit fee only
           Invoice.create({
             invoiceNumber,
             referenceId:   doc._id,
@@ -120,27 +103,16 @@ export async function POST(request: NextRequest) {
                 vatAmount:   0,
                 total:       visitFee,
               },
-              {
-                description: "Platform Service Fee",
-                amount:      doc.feeBreakdown?.platformFee ?? 0,
-                vatRate:     0.07,
-                vatAmount:   vat,
-                total:       (doc.feeBreakdown?.platformFee ?? 0) + vat,
-              },
-              {
-                description: "Payment Processing Fee",
-                amount:      doc.feeBreakdown?.stripeFee ?? 0,
-                vatRate:     0,
-                vatAmount:   0,
-                total:       doc.feeBreakdown?.stripeFee ?? 0,
-              },
             ],
-            subtotal:  visitFee + (doc.feeBreakdown?.platformFee ?? 0) + (doc.feeBreakdown?.stripeFee ?? 0),
-            vatTotal:  vat,
+            subtotal:  visitFee,
+            vatTotal:  0,
             total:     totalPaid,
             stripeRef: pi.id,
             status:    "issued",
             issuedAt:  new Date(),
+          }).then((invoice) => {
+            // Generate PDF async — does not block webhook response
+            generateAndStoreInvoicePdf(invoice);
           }),
         ]);
       }

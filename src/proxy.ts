@@ -7,7 +7,7 @@ const publicRoutes = [
   "/api/health",
   "/api/auth",
   "/api/webhooks",
-  "/api/scan-qr",
+  "/scan-qr",
 ];
 
 const authRoutes = ["/login", "/signup"];
