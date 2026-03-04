@@ -136,12 +136,12 @@ export default function VisitRequestDetailModal({ requestId, onClose, onRefresh 
           <div className="flex items-start justify-between">
             <div>
               <p className="text-base font-semibold tracking-[0.05em] text-[#32343C]">
-                {detail.rentPrice ? `฿${detail.rentPrice}` : "—"}
+                {detail.rentPrice ? formatPrice(detail?.rentPrice) : "—"}
               </p>
               <p className="text-[13px] text-[#545454]">{detail.propertyTitle}</p>
             </div>
             <p className="text-sm font-semibold tracking-[0.05em] text-[#32343C]">
-              {detail.rentPrice ? `฿${detail.rentPrice}` : ""}
+              {detail.rentPrice ? formatPrice(detail?.rentPrice) : ""}
               <span className="text-xs font-normal text-[#969696]">{t("perMonth")}</span>
             </p>
           </div>
