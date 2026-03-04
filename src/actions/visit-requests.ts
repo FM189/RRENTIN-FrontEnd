@@ -13,6 +13,8 @@ import Wallet from "@/models/Wallet";
 import PlatformFees from "@/models/PlatformFees";
 import { calculateFees } from "@/lib/fees";
 import Property from "@/models/Property";
+import { createNotification } from "@/actions/notifications";
+import { NotificationType } from "@/types/notifications";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-01-28.clover" });
 
@@ -40,6 +42,7 @@ export interface VisitRequestSummary {
 export interface VisitRequestDetail {
   id:                string;
   status:            string;
+  tenantId:          string;
   // property
   propertyId:        string;
   propertyTitle:     string;
@@ -327,6 +330,7 @@ export async function getOwnerVisitRequestDetail(id: string): Promise<VisitReque
     purposeOfRental:   doc.tenantInfo?.purposeOfRental ?? "",
     moveInDate:        doc.tenantInfo?.moveInDate ?? "",
     moveOutDate:       doc.tenantInfo?.moveOutDate ?? "",
+    tenantId:          String(doc.tenantId),
     createdAt:         doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt),
     visitFee:          doc.visitFee ?? 0,
     feeBreakdown: {
@@ -447,6 +451,27 @@ export async function scanQRCode(token: string): Promise<{ success: boolean }> {
       })] : []),
     ]);
   }
+
+  // Notify both parties — fire and forget (non-blocking)
+  const prop = await Property.findById(doc.propertyId).select("propertyTitle").lean() as { propertyTitle?: string } | null;
+  const propertyTitle = prop?.propertyTitle ?? "the property";
+
+  void Promise.all([
+    createNotification({
+      userId:  String(doc.tenantId),
+      type:    NotificationType.SHOWING_SCHEDULED,
+      title:   "Visit Completed",
+      message: `Your visit for ${propertyTitle} has been successfully completed.`,
+      href:    "/dashboard/tenant/proposals",
+    }),
+    createNotification({
+      userId:  String(doc.ownerId),
+      type:    NotificationType.PAYMENT_RECEIVED,
+      title:   "Visit Completed",
+      message: `The visit for ${propertyTitle} has been completed. Your payout is pending release.`,
+      href:    "/dashboard/owner/proposals",
+    }),
+  ]);
 
   return { success: true };
 }

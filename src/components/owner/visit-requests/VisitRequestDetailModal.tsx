@@ -10,6 +10,8 @@ import {
   ownerRejectRequest,
 } from "@/actions/visit-requests";
 import type { VisitRequestDetail } from "@/actions/visit-requests";
+import { createNotification } from "@/actions/notifications";
+import { NotificationType } from "@/types/notifications";
 import AgentPickerModal from "./AgentPickerModal";
 import AgentShowingModal from "./AgentShowingModal";
 
@@ -54,6 +56,15 @@ export default function VisitRequestDetailModal({ requestId, onClose, onRefresh 
   const confirmReject = () => {
     startTransition(async () => {
       await ownerRejectRequest(requestId);
+      if (detail?.tenantId) {
+        await createNotification({
+          userId:  detail.tenantId,
+          type:    NotificationType.PROPOSAL_REJECTED,
+          title:   "Visit Request Rejected",
+          message: `Your visit request for ${detail.propertyTitle} has been rejected.`,
+          href:    "/dashboard/tenant/proposals",
+        });
+      }
       onRefresh();
       onClose();
     });
@@ -72,6 +83,15 @@ export default function VisitRequestDetailModal({ requestId, onClose, onRefresh 
     if (whoShows === "show_self") {
       startTransition(async () => {
         await ownerAcceptRequest(requestId, "show_self");
+        if (detail?.tenantId) {
+          await createNotification({
+            userId:  detail.tenantId,
+            type:    NotificationType.PROPOSAL_ACCEPTED,
+            title:   "Visit Request Accepted",
+            message: `Your visit request for ${detail.propertyTitle} has been accepted.`,
+            href:    "/dashboard/tenant/proposals",
+          });
+        }
         setStep("accepted");
       });
     } else if (whoShows === "hire_new_agent") {

@@ -18,17 +18,18 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 // ─── Checkout form (inside Elements context) ──────────────────────────────────
 
 interface CheckoutFormProps {
-  paymentIntentId: string;
-  baseAmount:      number;
-  detail:          TenantPropertyDetail;
-  requestData:     VisitRequestFormData;
-  tenantId:        string;
-  onBack:          () => void;
-  onSuccess:       () => void;
+  paymentIntentId:    string;
+  baseAmount:         number;
+  detail:             TenantPropertyDetail;
+  requestData:        VisitRequestFormData;
+  tenantId:           string;
+  onBack:             () => void;
+  onSuccess:          () => void;
+  onPaymentConfirmed: () => void;
 }
 
 function CheckoutForm({
-  paymentIntentId, baseAmount, detail, requestData, tenantId, onBack, onSuccess,
+  paymentIntentId, baseAmount, detail, requestData, tenantId, onBack, onSuccess, onPaymentConfirmed,
 }: CheckoutFormProps) {
   const t        = useTranslations("Dashboard.visitPaymentModal");
   const stripe   = useStripe();
@@ -64,6 +65,7 @@ function CheckoutForm({
 
       // No redirect = payment succeeded on-page (card, Google Pay, Apple Pay, Link)
       // Webhook will flip status to payment_confirmed; navigate to dashboard
+      onPaymentConfirmed();
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("paymentFailed"));
@@ -108,19 +110,20 @@ function CheckoutForm({
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface VisitPaymentModalProps {
-  isOpen:      boolean;
-  detail:      TenantPropertyDetail;
-  requestData: VisitRequestFormData;
-  tenantId:    string;
-  onClose:     () => void;
-  onBack:      () => void;
-  onSuccess:   () => void;
+  isOpen:             boolean;
+  detail:             TenantPropertyDetail;
+  requestData:        VisitRequestFormData;
+  tenantId:           string;
+  onClose:            () => void;
+  onBack:             () => void;
+  onSuccess:          () => void;
+  onPaymentConfirmed: () => void;
 }
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
 export default function VisitPaymentModal({
-  isOpen, detail, requestData, tenantId, onClose, onBack, onSuccess,
+  isOpen, detail, requestData, tenantId, onClose, onBack, onSuccess, onPaymentConfirmed,
 }: VisitPaymentModalProps) {
   const t = useTranslations("Dashboard.visitPaymentModal");
 
@@ -292,6 +295,7 @@ export default function VisitPaymentModal({
                   tenantId={tenantId}
                   onBack={onBack}
                   onSuccess={() => setSucceeded(true)}
+                  onPaymentConfirmed={onPaymentConfirmed}
                 />
               </Elements>
             )}

@@ -11,6 +11,8 @@ import type { TenantPropertyDetail } from "@/actions/tenant-properties";
 import { VisitConfirmationModal, VisitRequestModal, VisitPaymentModal } from "@/components/ui";
 import type { VisitRequestFormData } from "@/components/ui";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { createNotification } from "@/actions/notifications";
+import { NotificationType } from "@/types/notifications";
 
 interface TenantPropertyDrawerProps {
   propertyId: string | null;
@@ -184,6 +186,23 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
   const handlePaymentSuccess = () => {
     setVisitPaymentModalOpen(false);
     setVisitFormData(null);
+  };
+
+  const handlePaymentConfirmed = async () => {
+    const ownerId = detail?.ownerId;
+    if (!ownerId) return;
+
+    const result = await createNotification({
+      userId: ownerId,
+      type: NotificationType.SHOWING_SCHEDULED,
+      title: "Visit Request Received",
+      message: `A tenant has requested a visit for ${detail!.title}.`,
+      href: "/dashboard/owner/proposals",
+    });
+
+    if (!result.success) {
+      console.error("[handlePaymentConfirmed] Notification failed:", result.error);
+    }
   };
 
   return (
@@ -429,6 +448,7 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
           onClose={() => setVisitPaymentModalOpen(false)}
           onBack={handlePaymentBack}
           onSuccess={handlePaymentSuccess}
+          onPaymentConfirmed={handlePaymentConfirmed}
         />
       )}
     </>

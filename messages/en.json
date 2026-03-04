@@ -901,5 +901,17 @@
       "invalidCredentials": "Invalid email or password",
       "serverError": "Something went wrong. Please try again."
     }
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "viewMore": "View more",
+    "noNotifications": "No notifications yet",
+    "justNow": "Just now",
+    "minutesAgo": "{count} min ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count} days ago",
+    "markAllRead": "Mark all as read"
   }
 }

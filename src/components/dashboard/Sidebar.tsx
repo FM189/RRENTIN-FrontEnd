@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Logo } from "@/components/ui";
 
 interface MenuItem {
@@ -17,14 +18,14 @@ interface MenuItem {
 const ownerMenu: MenuItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: "dashboard-circle" },
   { labelKey: "properties", href: "/dashboard/owner/properties", icon: "properties" },
-  { labelKey: "tenants", href: "/dashboard/owner/tenants", icon:"tenants" },
+  { labelKey: "tenants", href: "/dashboard/owner/tenants", icon:"tenants", },
   { labelKey: "agents", href: "/dashboard/owner/agents", icon:"agents" },
   { labelKey: "onDemandService", href: "/dashboard/owner/on-demand-service" },
   { labelKey: "payments", href: "/dashboard/owner/payments" },
   { labelKey: "insights", href: "/dashboard/owner/insights" },
   { labelKey: "membership", href: "/dashboard/owner/membership" },
   { labelKey: "proposals", href: "/dashboard/owner/proposals", icon:"proposals" },
-  { labelKey: "notification", href: "/dashboard/owner/notification" },
+  { labelKey: "notification", href: "/dashboard/owner/notification", icon:"notification" },
   { labelKey: "messages", href: "/dashboard/owner/messages" },
 ];
 
@@ -35,7 +36,7 @@ const tenantMenu: MenuItem[] = [
   { labelKey: "proposals", href: "/dashboard/tenant/proposals" ,icon:"proposals" },
   { labelKey: "favorites", href: "/dashboard/tenant/favorites" },
   { labelKey: "payments", href: "/dashboard/tenant/payments" },
-  { labelKey: "notification", href: "/dashboard/tenant/notification" },
+  { labelKey: "notification", href: "/dashboard/tenant/notification" ,icon:"notification" },
   { labelKey: "messages", href: "/dashboard/tenant/messages" },
   { labelKey: "profile", href: "/dashboard/tenant/profile" },
 ];
@@ -73,6 +74,7 @@ export default function Sidebar() {
 
   const role = user?.role ?? "tenant";
   const menuItems = menuByRole[role] ?? menuByRole.tenant;
+  const unreadCount = useUnreadCount();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
@@ -147,8 +149,13 @@ export default function Sidebar() {
                     />
                   )}
                   {!collapsed && (
-                    <span className="leading-[22px] whitespace-nowrap">
+                    <span className="leading-[22px] whitespace-nowrap flex-1">
                       {t(`menu.${item.labelKey}`)}
+                    </span>
+                  )}
+                  {!collapsed && item.labelKey === "notification" && unreadCount > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 bg-[#EE1D52] text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
                 </Link>
