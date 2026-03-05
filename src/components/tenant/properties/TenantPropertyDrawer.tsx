@@ -383,6 +383,7 @@ export default function TenantPropertyDrawer({ propertyId, onClose }: TenantProp
                     </button>
                     <button
                       type="button"
+                      onClick={() => propertyId && router.push(`/dashboard/tenant/properties/${propertyId}/book`)}
                       className="flex flex-1 items-center justify-center rounded-lg py-3 text-sm font-semibold leading-4 tracking-[0.05em] text-white transition-opacity hover:opacity-90"
                       style={{ background: "#0245A5", boxShadow: "0px 0px 2px rgba(0,0,0,0.25)" }}
                     >

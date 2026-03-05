@@ -6,11 +6,14 @@ import { useTranslations } from "next-intl";
 import Pagination from "@/components/ui/Pagination";
 import VisitRequestDetailModal from "@/components/owner/visit-requests/VisitRequestDetailModal";
 import TenantVisitRequestDetailModal from "@/components/tenant/visit-requests/TenantVisitRequestDetailModal";
+import OwnerRentBookingDetailModal from "@/components/owner/rent-bookings/OwnerRentBookingDetailModal";
+import TenantRentBookingDetailModal from "@/components/tenant/rent-bookings/TenantRentBookingDetailModal";
 import type { VisitRequestSummary } from "@/actions/visit-requests";
+import type { RentBookingSummary } from "@/actions/rent-booking";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { icon: string; labelKey: string; color: string }> = {
+const VISIT_STATUS: Record<string, { icon: string; labelKey: string; color: string }> = {
   payment_pending:   { icon: "⏳", labelKey: "statusPending",   color: "text-amber-600" },
   payment_confirmed: { icon: "⏳", labelKey: "statusPending",   color: "text-amber-600" },
   accepted:          { icon: "✅", labelKey: "statusAccepted",  color: "text-green-600" },
@@ -18,26 +21,39 @@ const STATUS_CONFIG: Record<string, { icon: string; labelKey: string; color: str
   cancelled:         { icon: "❌", labelKey: "statusCancelled", color: "text-red-600"   },
 };
 
+const RENT_STATUS: Record<string, { labelKey: string; color: string }> = {
+  pending:         { labelKey: "rentStatusPending",        color: "text-amber-600"  },
+  accepted:        { labelKey: "rentStatusAccepted",       color: "text-green-600"  },
+  rejected:        { labelKey: "rentStatusRejected",       color: "text-red-600"    },
+  payment_pending: { labelKey: "rentStatusPaymentPending", color: "text-amber-600"  },
+  active:          { labelKey: "rentStatusActive",         color: "text-blue-600"   },
+  completed:       { labelKey: "rentStatusCompleted",      color: "text-green-700"  },
+  cancelled:       { labelKey: "rentStatusCancelled",      color: "text-red-600"    },
+};
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  requests:   VisitRequestSummary[];
-  total:      number;
-  totalPages: number;
-  page:       number;
-  role:       "owner" | "tenant";
-  basePath:   string;   // e.g. "/dashboard/owner/proposals"
+  requests:     VisitRequestSummary[];
+  rentBookings: RentBookingSummary[];
+  total:        number;
+  totalPages:   number;
+  page:         number;
+  role:         "owner" | "tenant";
+  basePath:     string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProposalsTable({
-  requests, total, totalPages, page, role, basePath,
+  requests, rentBookings, total, totalPages, page, role, basePath,
 }: Props) {
   const t      = useTranslations("Dashboard.ownerVisitRequests");
   const router = useRouter();
-  const [detailId,       setDetailId]       = useState<string | null>(null);
-  const [tenantDetailId, setTenantDetailId] = useState<string | null>(null);
+
+  const [visitDetailId,      setVisitDetailId]      = useState<string | null>(null);
+  const [tenantVisitDetailId, setTenantVisitDetailId] = useState<string | null>(null);
+  const [rentDetailId,       setRentDetailId]       = useState<string | null>(null);
 
   const navigate = (newPage: number) => {
     const params = new URLSearchParams();
@@ -47,8 +63,9 @@ export default function ProposalsTable({
 
   const handleRefresh = () => {
     router.refresh();
-    setDetailId(null);
-    setTenantDetailId(null);
+    setVisitDetailId(null);
+    setTenantVisitDetailId(null);
+    setRentDetailId(null);
   };
 
   const formatDate = (iso: string) =>
@@ -58,9 +75,23 @@ export default function ProposalsTable({
 
   const partyLabel = (req: VisitRequestSummary) => {
     const name = req.partyName || "—";
-    const role = req.partyRole === "tenant" ? t("labelTenant") : t("labelOwner");
-    return { name, role };
+    const roleLabel = req.partyRole === "tenant" ? t("labelTenant") : t("labelOwner");
+    return { name, roleLabel };
   };
+
+  // ── Merge + sort newest first ──────────────────────────────────────────────
+  type MergedRow =
+    | { kind: "visit"; data: VisitRequestSummary }
+    | { kind: "rent";  data: RentBookingSummary  };
+
+  const mergedRows: MergedRow[] = [
+    ...requests.map((r): MergedRow     => ({ kind: "visit", data: r })),
+    ...rentBookings.map((b): MergedRow => ({ kind: "rent",  data: b })),
+  ].sort((a, b) =>
+    new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime()
+  );
+
+  const hasRows = mergedRows.length > 0;
 
   return (
     <>
@@ -92,85 +123,133 @@ export default function ProposalsTable({
             </thead>
 
             <tbody>
-              {requests.length === 0 ? (
+              {!hasRows ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-sm text-[#969696]">
                     {t("noRequests")}
                   </td>
                 </tr>
               ) : (
-                requests.map((req) => {
-                  const s           = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.payment_pending;
-                  const date        = formatDate(req.createdAt);
-                  const { name, role: roleLabel } = partyLabel(req);
-
-                  return (
-                    <tr
-                      key={req.id}
-                      className="border-b border-dashed border-[#E0E0E0] transition-colors hover:bg-[#F7FAFE]"
-                    >
-                      {/* Proposal ID — MongoDB ObjectId */}
-                      <td className="px-6 py-4 font-mono text-xs text-[#32343C]">
-                        {req.id}
-                      </td>
-
-                      {/* Property */}
-                      <td className="px-4 py-4 text-center text-sm text-[#32343C]">
-                        {req.propertyTitle || "—"}
-                      </td>
-
-                      {/* Proposal Type */}
-                      <td className="px-4 py-4 text-center text-sm text-[#32343C]">
-                        {t("typePropertyVisit")}
-                      </td>
-
-                      {/* Party */}
-                      <td className="px-4 py-4 text-center text-sm text-[#32343C]">
-                        {name}{" "}
-                        <span className="text-[#969696]">{roleLabel}</span>
-                      </td>
-
-                      {/* Date Sent */}
-                      <td className="px-4 py-4 text-center text-sm text-[#32343C]">{date}</td>
-
-                      {/* Status */}
-                      <td className="px-4 py-4 text-center">
-                        <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${s.color}`}>
-                          <span>{s.icon}</span>
-                          {t(s.labelKey)}
-                        </span>
-                      </td>
-
-                      {/* Payment */}
-                      <td className="px-4 py-4 text-center">
-                        {req.paymentStatus === "paid" ? (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
-                            ✅ {t("paymentPaid")}
-                          </span>
-                        ) : req.paymentStatus === "refunded" ? (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-red-500">
-                            ↩ {t("paymentRefunded")}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
-                            ⏳ {t("paymentPending")}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Action */}
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => role === "owner" ? setDetailId(req.id) : setTenantDetailId(req.id)}
-                          className="rounded-[4px] bg-[#0245A5] px-5 py-1.5 text-xs font-semibold text-white hover:bg-[#01357A]"
+                <>
+                  {mergedRows.map((row) => {
+                    if (row.kind === "visit") {
+                      const req = row.data;
+                      const s = VISIT_STATUS[req.status] ?? VISIT_STATUS.payment_pending;
+                      const { name, roleLabel } = partyLabel(req);
+                      return (
+                        <tr
+                          key={`visit-${req.id}`}
+                          className="border-b border-dashed border-[#E0E0E0] transition-colors hover:bg-[#F7FAFE]"
                         >
-                          {t("view")}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                          <td className="px-6 py-4 font-mono text-xs text-[#32343C]">{req.id}</td>
+
+                          <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                            {req.propertyTitle || "—"}
+                          </td>
+
+                          <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                            {t("typePropertyVisit")}
+                          </td>
+
+                          <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                            {name}{" "}
+                            <span className="text-[#969696]">{roleLabel}</span>
+                          </td>
+
+                          <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                            {formatDate(req.createdAt)}
+                          </td>
+
+                          <td className="px-4 py-4 text-center">
+                            <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${s.color}`}>
+                              <span>{s.icon}</span>
+                              {t(s.labelKey)}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-4 text-center">
+                            {req.paymentStatus === "paid" ? (
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
+                                ✅ {t("paymentPaid")}
+                              </span>
+                            ) : req.paymentStatus === "refunded" ? (
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-red-500">
+                                ↩ {t("paymentRefunded")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
+                                ⏳ {t("paymentPending")}
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                role === "owner"
+                                  ? setVisitDetailId(req.id)
+                                  : setTenantVisitDetailId(req.id)
+                              }
+                              className="rounded-[4px] bg-[#0245A5] px-5 py-1.5 text-xs font-semibold text-white hover:bg-[#01357A]"
+                            >
+                              {t("view")}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    // ── Rent booking row ──
+                    const b = row.data;
+                    const s = RENT_STATUS[b.status] ?? RENT_STATUS.pending;
+                    return (
+                      <tr
+                        key={`rent-${b.id}`}
+                        className="border-b border-dashed border-[#E0E0E0] transition-colors hover:bg-[#F7FAFE]"
+                      >
+                        <td className="px-6 py-4 font-mono text-xs text-[#32343C]">{b.id}</td>
+
+                        <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                          {b.propertyTitle || "—"}
+                        </td>
+
+                        <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                          {t("typeRentBooking")}
+                        </td>
+
+                        <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                          {b.partyName || "—"}{" "}
+                          <span className="text-[#969696]">
+                            {role === "owner" ? t("labelTenant") : t("labelOwner")}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4 text-center text-sm text-[#32343C]">
+                          {formatDate(b.createdAt)}
+                        </td>
+
+                        <td className="px-4 py-4 text-center">
+                          <span className={`text-sm font-medium ${s.color}`}>
+                            {t(s.labelKey)}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4 text-center text-sm text-[#969696]">—</td>
+
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setRentDetailId(b.id)}
+                            className="rounded-[4px] bg-[#0245A5] px-5 py-1.5 text-xs font-semibold text-white hover:bg-[#01357A]"
+                          >
+                            {t("view")}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </>
               )}
             </tbody>
           </table>
@@ -188,20 +267,38 @@ export default function ProposalsTable({
         )}
       </div>
 
-      {/* Owner detail modal */}
-      {role === "owner" && detailId && (
+      {/* Owner visit request modal */}
+      {role === "owner" && visitDetailId && (
         <VisitRequestDetailModal
-          requestId={detailId}
-          onClose={() => setDetailId(null)}
+          requestId={visitDetailId}
+          onClose={() => setVisitDetailId(null)}
           onRefresh={handleRefresh}
         />
       )}
 
-      {/* Tenant detail modal */}
-      {role === "tenant" && tenantDetailId && (
+      {/* Tenant visit request modal */}
+      {role === "tenant" && tenantVisitDetailId && (
         <TenantVisitRequestDetailModal
-          requestId={tenantDetailId}
-          onClose={() => setTenantDetailId(null)}
+          requestId={tenantVisitDetailId}
+          onClose={() => setTenantVisitDetailId(null)}
+        />
+      )}
+
+      {/* Owner rent booking modal */}
+      {role === "owner" && rentDetailId && (
+        <OwnerRentBookingDetailModal
+          bookingId={rentDetailId}
+          onClose={() => setRentDetailId(null)}
+          onRefresh={handleRefresh}
+        />
+      )}
+
+      {/* Tenant rent booking modal */}
+      {role === "tenant" && rentDetailId && (
+        <TenantRentBookingDetailModal
+          bookingId={rentDetailId}
+          onClose={() => setRentDetailId(null)}
+          onRefresh={handleRefresh}
         />
       )}
     </>

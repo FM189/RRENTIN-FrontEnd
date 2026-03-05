@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import dbConnect from "@/lib/mongodb";
 import VisitRequest from "@/models/VisitRequest";
+import RentBooking from "@/models/RentBooking";
 import Transaction from "@/models/Transaction";
 import Invoice, { nextInvoiceNumber } from "@/models/Invoice";
 import User from "@/models/User";
@@ -119,8 +120,83 @@ export async function POST(request: NextRequest) {
     }
 
     // ── rent_booking ──────────────────────────────────────────────────────────
-    // Wire up here when the rent booking payment flow is built:
-    // if (referenceType === "rent_booking") { ... }
+    if (pi.metadata?.type === "rent_first_month") {
+      const bookingId = pi.metadata?.bookingId;
+      if (bookingId) {
+        const booking = await RentBooking.findById(bookingId);
+
+        // Idempotent — skip if already processed
+        if (booking && booking.status !== "active") {
+          const paymentMethodId =
+            typeof pi.payment_method === "string"
+              ? pi.payment_method
+              : (pi.payment_method as Stripe.PaymentMethod | null)?.id ?? "";
+
+          await RentBooking.findByIdAndUpdate(bookingId, {
+            "stripe.lockedPaymentMethodId": paymentMethodId,
+            "stripe.firstMonthPaidAt":      new Date(),
+            status: "active",
+          });
+
+          const totalPaid = pi.amount / 100;
+
+          const tenant = await User.findById(booking.tenantId)
+            .select("firstName lastName email")
+            .lean() as { firstName?: string; lastName?: string; email?: string } | null;
+
+          const tenantName = tenant
+            ? `${tenant.firstName ?? ""} ${tenant.lastName ?? ""}`.trim()
+            : "";
+
+          const invoiceNumber = await nextInvoiceNumber();
+
+          await Promise.all([
+            Transaction.insertMany([
+              {
+                type:          "rent_payment",
+                userId:        booking.tenantId,
+                referenceId:   booking._id,
+                referenceType: "rent_booking",
+                propertyId:    booking.propertyId,
+                amount:        totalPaid,
+                stripeRef:     pi.id,
+                status:        "completed",
+                description:   `First month rent for booking ${bookingId}`,
+              },
+            ]),
+
+            Invoice.create({
+              invoiceNumber,
+              referenceId:   booking._id,
+              referenceType: "rent_booking",
+              propertyId:    booking.propertyId,
+              issuedTo: {
+                userId:   booking.tenantId,
+                fullName: tenantName,
+                email:    tenant?.email ?? "",
+              },
+              lineItems: [
+                {
+                  description: "First Month Rent",
+                  amount:      totalPaid,
+                  vatRate:     0,
+                  vatAmount:   0,
+                  total:       totalPaid,
+                },
+              ],
+              subtotal:  totalPaid,
+              vatTotal:  0,
+              total:     totalPaid,
+              stripeRef: pi.id,
+              status:    "issued",
+              issuedAt:  new Date(),
+            }).then((invoice) => {
+              generateAndStoreInvoicePdf(invoice);
+            }),
+          ]);
+        }
+      }
+    }
 
     // ── agent_service ─────────────────────────────────────────────────────────
     // Wire up here when the agent service payment flow is built:
@@ -139,6 +215,17 @@ export async function POST(request: NextRequest) {
         status:           "cancelled",
       });
       // Nothing was charged — no transactions or invoices to create
+    }
+
+    // Rent booking failed — revert to accepted so tenant can retry
+    if (pi.metadata?.type === "rent_first_month") {
+      const bookingId = pi.metadata?.bookingId;
+      if (bookingId) {
+        await RentBooking.findOneAndUpdate(
+          { _id: bookingId, status: "payment_pending" },
+          { status: "accepted", "stripe.firstMonthPaymentIntentId": "" },
+        );
+      }
     }
   }
 

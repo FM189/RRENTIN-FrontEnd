@@ -486,6 +486,63 @@ export async function getTenantPropertyDetail(id: string): Promise<TenantPropert
   }
 }
 
+// ─── Booking property data ────────────────────────────────────────────────────
+
+export interface TenantBookingProperty {
+  id: string;
+  title: string;
+  type: string;
+  address: string;
+  province: string;
+  photos: string[];
+  bedrooms: number;
+  bathrooms: number;
+  unitArea: string;
+  unitAreaUnit: string;
+  contracts: Array<{
+    months: number;
+    rentPrice: string;
+    securityDeposit: string;
+  }>;
+}
+
+export async function getTenantBookingProperty(id: string): Promise<TenantBookingProperty | null> {
+  await dbConnect();
+
+  if (!Types.ObjectId.isValid(id)) return null;
+
+  try {
+    const doc = await Property.findOne({
+      _id: new Types.ObjectId(id),
+      approvalStatus: "approved",
+    })
+      .select("propertyTitle propertyType address province photos bedrooms bathrooms unitArea unitAreaUnit contracts")
+      .lean();
+
+    if (!doc) return null;
+
+    return {
+      id:           String(doc._id),
+      title:        String(doc.propertyTitle ?? ""),
+      type:         String(doc.propertyType  ?? ""),
+      address:      String(doc.address       ?? ""),
+      province:     String(doc.province      ?? ""),
+      photos:       (doc.photos ?? []) as string[],
+      bedrooms:     Number(doc.bedrooms  ?? 0),
+      bathrooms:    Number(doc.bathrooms ?? 0),
+      unitArea:     String(doc.unitArea    ?? ""),
+      unitAreaUnit: String(doc.unitAreaUnit ?? "sqm"),
+      contracts:    ((doc.contracts ?? []) as Array<{ months: number; rentPrice: string; securityDeposit: string }>).map((c) => ({
+        months:          Number(c.months),
+        rentPrice:       String(c.rentPrice),
+        securityDeposit: String(c.securityDeposit),
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Full property detail for the tenant detail page ─────────────────────────
 // Like getPropertyDetail but WITHOUT the owner filter — looks up any approved property.
 
