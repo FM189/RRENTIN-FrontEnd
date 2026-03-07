@@ -235,7 +235,19 @@ export default function ProposalsTable({
                           </span>
                         </td>
 
-                        <td className="px-4 py-4 text-center text-sm text-[#969696]">—</td>
+                        <td className="px-4 py-4 text-center">
+                          {(b.status === "active" || b.status === "completed") ? (
+                            <span className="inline-flex items-center gap-1 text-sm font-medium text-green-600">
+                              ✅ {t("paymentPaid")}
+                            </span>
+                          ) : b.status === "payment_pending" ? (
+                            <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
+                              ⏳ {t("paymentPending")}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-[#969696]">—</span>
+                          )}
+                        </td>
 
                         <td className="px-6 py-4 text-center">
                           <button

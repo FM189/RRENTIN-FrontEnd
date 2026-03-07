@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { getRentBookingDetail, ownerDecideRentBooking } from "@/actions/rent-booking";
 import type { RentBookingDetail } from "@/actions/rent-booking";
 import { formatPrice } from "@/lib/format";
+import OwnerAgreementModal from "./OwnerAgreementModal";
 
 interface Props {
   bookingId: string;
@@ -30,10 +31,11 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
   const [loading,  setLoading]  = useState(true);
   const [imgIndex, setImgIndex] = useState(0);
 
-  const [isPending,    startTransition] = useTransition();
-  const [rejectNote,   setRejectNote]   = useState("");
-  const [showReject,   setShowReject]   = useState(false);
+  const [isPending,     startTransition]  = useTransition();
+  const [rejectNote,    setRejectNote]    = useState("");
+  const [showReject,    setShowReject]    = useState(false);
   const [rejectConfirm, setRejectConfirm] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
 
   useEffect(() => {
     getRentBookingDetail(bookingId).then((d) => {
@@ -41,13 +43,6 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
       setLoading(false);
     });
   }, [bookingId]);
-
-  const handleAccept = () => {
-    startTransition(async () => {
-      await ownerDecideRentBooking(bookingId, "accepted");
-      onRefresh();
-    });
-  };
 
   const handleReject = () => {
     startTransition(async () => {
@@ -63,6 +58,7 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
   const statusColor = STATUS_COLOR[detail?.status ?? ""] ?? "text-[#969696] bg-gray-50";
 
   return (
+    <>
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -165,7 +161,7 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
                 <Section title={t("sectionTenant")}>
                   <Field label={t("fieldFullName")}    value={detail.tenantInfo.fullName} />
                   <Field label={t("fieldNationality")} value={detail.tenantInfo.nationality} />
-                  <Field label={t("fieldCurrentCity")} value={detail.tenantInfo.currentCity} />
+                  <Field label={t("fieldCurrentCountry")} value={detail.tenantInfo.currentCountry} />
                   <Field label={t("fieldOccupation")}  value={detail.tenantInfo.occupation} />
                   <Field label={t("fieldDesignation")} value={detail.tenantInfo.designation} />
                 </Section>
@@ -176,7 +172,7 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
                   <Field label={t("fieldMoveOut")}    value={formatDate(detail.moveOutDate)} />
                   <Field label={t("fieldArrival")}    value={detail.arrivalTime} />
                   <Field label={t("fieldStayDays")}   value={`${detail.stayDays} ${t("days")}`} />
-                  <Field label={t("fieldContract")}   value={`${detail.contractMonths} ${detail.contractMonths === 1 ? t("month") : t("months")}`} />
+                  <Field label={t("fieldContract")}   value={`${detail.stayDays} ${t("days")}`} />
                 </Section>
               </div>
 
@@ -194,22 +190,41 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
 
                 {/* Price summary */}
                 <Section title={t("sectionPrice")}>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-[#545454]">{t("fieldRental")}</span>
-                      <span className="font-medium text-[#32343C]">{formatPrice(detail.rentalAmount)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-[#545454]">{t("fieldDeposit")}</span>
-                      <span className="font-medium text-[#32343C]">{formatPrice(detail.securityDeposit)}</span>
-                    </div>
-                    <div className="border-t border-[rgba(65,65,65,0.1)] pt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-[#32343C]">{t("fieldTotal")}</span>
-                        <span className="text-base font-bold text-[#0245A5]">{formatPrice(detail.totalUpfront)}</span>
+                  {(() => {
+                    const fullMonths  = Math.floor(detail.stayDays / 30);
+                    const remainder   = detail.remainderDays ?? 0;
+                    const fullCost    = fullMonths * detail.rentalAmount;
+                    const partialCost = remainder * (detail.dailyRate ?? 0);
+                    const total       = fullCost + partialCost;
+                    return (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-[#545454]">{t("fieldDailyRate")}</span>
+                          <span className="font-medium text-[#32343C]">{formatPrice(detail.dailyRate ?? 0)} {t("perDay")}</span>
+                        </div>
+                        <div className="border-t border-[rgba(65,65,65,0.1)] pt-2 flex flex-col gap-1.5">
+                          {fullMonths > 0 && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#545454]">{fullMonths} {fullMonths === 1 ? t("month") : t("months")} × {formatPrice(detail.rentalAmount)}</span>
+                              <span className="font-medium text-[#32343C]">{formatPrice(fullCost)}</span>
+                            </div>
+                          )}
+                          {remainder > 0 && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#545454]">{remainder} {t("days")} × {formatPrice(detail.dailyRate ?? 0)}</span>
+                              <span className="font-medium text-[#32343C]">{formatPrice(partialCost)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="border-t border-[rgba(65,65,65,0.1)] pt-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-[#32343C]">{t("fieldTotalContract")}</span>
+                            <span className="text-base font-bold text-[#0245A5]">{formatPrice(total)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </Section>
               </div>
             </div>
@@ -285,11 +300,9 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
                     </button>
                     <button
                       type="button"
-                      onClick={handleAccept}
-                      disabled={isPending}
-                      className="flex items-center gap-1.5 rounded-[4px] bg-[#0245A5] px-6 py-2 text-sm font-semibold text-white hover:bg-[#01357A] disabled:opacity-50"
+                      onClick={() => setShowAgreement(true)}
+                      className="rounded-[4px] bg-[#0245A5] px-6 py-2 text-sm font-semibold text-white hover:bg-[#01357A]"
                     >
-                      {isPending && <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />}
                       {t("accept")}
                     </button>
                   </div>
@@ -300,6 +313,19 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
         )}
       </div>
     </div>
+
+    {showAgreement && detail && (
+      <OwnerAgreementModal
+        detail={detail}
+        onSigned={() => {
+          setShowAgreement(false);
+          onRefresh();
+          onClose();
+        }}
+        onClose={() => setShowAgreement(false)}
+      />
+    )}
+    </>
   );
 }
 

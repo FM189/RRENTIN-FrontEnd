@@ -7,6 +7,7 @@ import { getRentBookingDetail, cancelRentBooking } from "@/actions/rent-booking"
 import type { RentBookingDetail } from "@/actions/rent-booking";
 import { formatPrice } from "@/lib/format";
 import RentPaymentModal from "./RentPaymentModal";
+import TenantAgreementModal from "./TenantAgreementModal";
 
 interface Props {
   bookingId: string;
@@ -31,6 +32,7 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
   const [loading,       setLoading]       = useState(true);
   const [imgIndex,      setImgIndex]      = useState(0);
   const [cancelConfirm,  setCancelConfirm]  = useState(false);
+  const [showAgreement,  setShowAgreement]  = useState(false);
   const [showPayment,    setShowPayment]    = useState(false);
   const [isPending,      startTransition]  = useTransition();
 
@@ -191,10 +193,16 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
                 <p className="mt-1 text-sm text-green-600">{t("acceptedDesc")}</p>
                 <button
                   type="button"
-                  onClick={() => setShowPayment(true)}
+                  onClick={() => {
+                    if (detail.agreement?.tenantSignedAt) {
+                      setShowPayment(true);
+                    } else {
+                      setShowAgreement(true);
+                    }
+                  }}
                   className="mt-3 rounded-[4px] bg-[#0245A5] px-6 py-2 text-sm font-semibold text-white hover:bg-[#01357A]"
                 >
-                  {t("payNow")}
+                  {detail.agreement?.tenantSignedAt ? t("payNow") : t("reviewAndSign")}
                 </button>
               </div>
             )}
@@ -239,6 +247,17 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
         )}
       </div>
     </div>
+
+    {showAgreement && detail && (
+      <TenantAgreementModal
+        detail={detail}
+        onSigned={() => {
+          setShowAgreement(false);
+          setShowPayment(true);
+        }}
+        onClose={() => setShowAgreement(false)}
+      />
+    )}
 
     {/* Payment modal — rendered outside the detail modal so z-index stacks correctly */}
     {showPayment && detail && (

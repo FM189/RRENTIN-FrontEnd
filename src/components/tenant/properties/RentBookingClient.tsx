@@ -4,18 +4,17 @@ import { useState, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { City, Country } from "country-state-city";
+import { Country } from "country-state-city";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatPrice } from "@/lib/format";
 import { createRentBooking } from "@/actions/rent-booking";
 import type { TenantBookingProperty } from "@/actions/tenant-properties";
 
-const THAILAND_CITIES = City.getCitiesOfCountry("TH")?.map((c, i) => ({ name: c.name, key: `${c.name}-${i}` })) ?? [];
 const ALL_COUNTRIES = Country.getAllCountries().map((c) => c.name);
 
 interface BookingFormData {
   fullName: string;
-  currentCity: string;
+  currentCountry: string;
   nationality: string;
   guestsStaying: string;
   occupation: string;
@@ -73,15 +72,6 @@ function parsePriceNum(val: string | number): number {
   return parseFloat(String(val).replace(/,/g, "")) || 0;
 }
 
-function monthsBetween(from: string, to: string): number {
-  if (!from || !to) return 0;
-  const d1 = new Date(from);
-  const d2 = new Date(to);
-  const diff =
-    (d2.getFullYear() - d1.getFullYear()) * 12 +
-    (d2.getMonth() - d1.getMonth());
-  return Math.max(0, diff);
-}
 
 function formatDateDisplay(dateStr: string): string {
   if (!dateStr) return "";
@@ -182,7 +172,7 @@ export default function RentBookingClient({ property }: { property: TenantBookin
 
   const [form, setForm] = useState<BookingFormData>({
     fullName: user?.name ?? "",
-    currentCity: "",
+    currentCountry: "",
     nationality: "",
     guestsStaying: "",
     occupation: "",
@@ -211,36 +201,35 @@ export default function RentBookingClient({ property }: { property: TenantBookin
     return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
   }, [form.moveInDate, form.moveOutDate]);
 
-  // Use rounded day-based months for accurate contract matching
-  // (calendar monthsBetween is unreliable: Mar 1 → Mar 31 = 0 months)
-  const stayMonthsForContract = useMemo(
-    () => (stayDays > 0 ? Math.max(1, Math.round(stayDays / 30)) : 0),
-    [stayDays],
-  );
-
   const sortedContracts = useMemo(
     () => [...property.contracts].sort((a, b) => a.months - b.months),
     [property.contracts],
   );
 
+  const estimatedMonths = stayDays > 0 ? Math.max(1, Math.round(stayDays / 30)) : 0;
+
   const matchedContractIndex = useMemo(() => {
-    if (!sortedContracts.length || stayMonthsForContract === 0) return -1;
-    const idx = sortedContracts.findIndex((c) => c.months >= stayMonthsForContract);
+    if (!sortedContracts.length || estimatedMonths === 0) return -1;
+    const idx = sortedContracts.findIndex((c) => c.months >= estimatedMonths);
     return idx === -1 ? sortedContracts.length - 1 : idx;
-  }, [sortedContracts, stayMonthsForContract]);
+  }, [sortedContracts, estimatedMonths]);
 
-  const matchedContract = matchedContractIndex >= 0 ? sortedContracts[matchedContractIndex] : null;
-
-  const rentalAmount  = matchedContract ? parsePriceNum(matchedContract.rentPrice)       : 0;
-  const securityAmount = matchedContract ? parsePriceNum(matchedContract.securityDeposit) : 0;
-  const totalAmount   = rentalAmount + securityAmount;
+  const matchedContract  = matchedContractIndex >= 0 ? sortedContracts[matchedContractIndex] : null;
+  const rentalAmount     = matchedContract ? parsePriceNum(matchedContract.rentPrice)       : 0;
+  const securityAmount   = matchedContract ? parsePriceNum(matchedContract.securityDeposit) : 0;
+  const dailyRate        = rentalAmount > 0 ? rentalAmount / 30 : 0;
+  const fullMonths       = stayDays > 0 ? Math.floor(stayDays / 30) : 0;
+  const remainderDays    = stayDays > 0 ? stayDays % 30 : 0;
+  const billingCycles    = fullMonths + (remainderDays > 0 ? 1 : 0);
+  const partialMonthCost = remainderDays > 0 ? dailyRate * remainderDays : 0;
+  const totalContractValue = (fullMonths * rentalAmount) + partialMonthCost;
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof BookingFormData, string>> = {};
     const required = t("required");
 
     if (!form.fullName.trim())    newErrors.fullName     = required;
-    if (!form.currentCity)  newErrors.currentCity  = required;
+    if (!form.currentCountry)  newErrors.currentCountry  = required;
     if (!form.nationality)  newErrors.nationality  = required;
     if (!form.guestsStaying)      newErrors.guestsStaying = required;
     if (!form.occupation.trim())  newErrors.occupation   = required;
@@ -268,7 +257,7 @@ export default function RentBookingClient({ property }: { property: TenantBookin
       const result = await createRentBooking({
         propertyId:      property.id,
         fullName:        form.fullName,
-        currentCity:     form.currentCity,
+        currentCountry:     form.currentCountry,
         nationality:     form.nationality,
         occupation:      form.occupation,
         designation:     form.designation,
@@ -280,7 +269,7 @@ export default function RentBookingClient({ property }: { property: TenantBookin
         primaryReason:   form.primaryReason,
         visaType:        form.visaType,
         specialRequests: form.specialRequests,
-        contractMonths:  matchedContract.months,
+        contractMonths:  billingCycles,
       });
 
       if (!result.success) {
@@ -363,20 +352,19 @@ export default function RentBookingClient({ property }: { property: TenantBookin
               {[property.address, property.province].filter(Boolean).join(", ")}
             </p>
             <div className="flex items-baseline justify-between gap-2">
-              {matchedContract && (
+              {matchedContract && stayDays > 0 ? (
                 <>
                   <span className="text-xl font-bold text-[#32343C]">
-                    {formatPrice(totalAmount)}
+                    {formatPrice(totalContractValue)}
                   </span>
                   <span className="shrink-0 text-sm font-semibold text-[#32343C]">
                     {formatPrice(rentalAmount)}
                     <span className="text-xs font-normal text-[#969696]">/month</span>
                   </span>
                 </>
-              )}
-              {!matchedContract && property.contracts.length > 0 && (
+              ) : (
                 <span className="text-sm font-semibold text-[#32343C]">
-                  {formatPrice(parsePriceNum(property.contracts[0].rentPrice))}
+                  {formatPrice(parsePriceNum(sortedContracts[0]?.rentPrice ?? 0))}
                   <span className="text-xs font-normal text-[#969696]">/month</span>
                 </span>
               )}
@@ -481,22 +469,48 @@ export default function RentBookingClient({ property }: { property: TenantBookin
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold text-[#32343C]">{t("yourPriceSummary")}</p>
               <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-[#32343C]">{t("rentalAmount")}</p>
-                  <p className="text-xs font-semibold text-[#32343C]">{formatPrice(rentalAmount)}</p>
+                {/* Daily rate */}
+                <div className="flex items-center justify-between rounded-[4px] bg-[#F7FAFE] px-2.5 py-1.5">
+                  <p className="text-xs font-medium text-[#545454]">{t("dailyRate")}</p>
+                  <p className="text-xs font-semibold text-primary">{formatPrice(dailyRate)}{t("perDay")}</p>
                 </div>
-                <div className="flex flex-col gap-1">
+                {/* Full months */}
+                {fullMonths > 0 && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-[#32343C]">
+                      {fullMonths} {fullMonths === 1 ? t("month") : t("months")} × {formatPrice(rentalAmount)}
+                    </p>
+                    <p className="text-xs font-semibold text-[#32343C]">{formatPrice(fullMonths * rentalAmount)}</p>
+                  </div>
+                )}
+                {/* Partial month */}
+                {remainderDays > 0 && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-[#32343C]">
+                      {remainderDays} {remainderDays === 1 ? t("day") : t("days")} × {formatPrice(dailyRate)}
+                    </p>
+                    <p className="text-xs font-semibold text-[#32343C]">{formatPrice(partialMonthCost)}</p>
+                  </div>
+                )}
+                {/* Security deposit */}
+                <div className="flex flex-col gap-0.5">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium text-[#32343C]">{t("securityAmount")}</p>
                     <p className="text-xs font-semibold text-[#32343C]">{formatPrice(securityAmount)}</p>
                   </div>
                   <p className="text-xs text-[#969696]">{t("securityNote")}</p>
                 </div>
-                <div className="border-t border-[rgba(102,102,102,0.2)] pt-2">
+                {/* Total contract value */}
+                <div className="border-t border-[rgba(102,102,102,0.2)] pt-2 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-[#32343C]">{t("totalAmount")}</p>
-                    <p className="text-base font-bold text-[#32343C]">{formatPrice(totalAmount)}</p>
+                    <p className="text-xs font-medium text-[#969696]">{t("totalContractValue")}</p>
+                    <p className="text-xs font-semibold text-[#969696]">{formatPrice(totalContractValue)}</p>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-[#32343C]">{t("chargedToday")}</p>
+                    <p className="text-base font-bold text-primary">{formatPrice(rentalAmount)}</p>
+                  </div>
+                  <p className="text-xs text-[#969696]">{t("chargedTodayNote")}</p>
                 </div>
               </div>
             </div>
@@ -546,21 +560,21 @@ export default function RentBookingClient({ property }: { property: TenantBookin
               />
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-[#32343C]">
-                  {t("currentCity")}<span className="ml-0.5 text-[#EE1D52]">*</span>
+                  {t("currentCountry")}<span className="ml-0.5 text-[#EE1D52]">*</span>
                 </label>
                 <select
-                  value={form.currentCity}
-                  onChange={(e) => set("currentCity", e.target.value)}
+                  value={form.currentCountry}
+                  onChange={(e) => set("currentCountry", e.target.value)}
                   className={`h-11 w-full rounded-[6px] border px-3 text-sm focus:border-primary focus:outline-none transition-colors ${
-                    errors.currentCity ? "border-[#EE1D52]" : "border-[rgba(102,102,102,0.35)]"
-                  } ${!form.currentCity ? "text-[rgba(102,102,102,0.6)]" : "text-[#32343C]"}`}
+                    errors.currentCountry ? "border-[#EE1D52]" : "border-[rgba(102,102,102,0.35)]"
+                  } ${!form.currentCountry ? "text-[rgba(102,102,102,0.6)]" : "text-[#32343C]"}`}
                 >
-                  <option value="">{t("currentCityPlaceholder")}</option>
-                  {THAILAND_CITIES.map((city) => (
-                    <option key={city.key} value={city.name}>{city.name}</option>
+                  <option value="">{t("currentCountryPlaceholder")}</option>
+                  {ALL_COUNTRIES.map((country) => (
+                    <option key={country} value={country}>{country}</option>
                   ))}
                 </select>
-                {errors.currentCity && <p className="text-xs text-[#EE1D52]">{errors.currentCity}</p>}
+                {errors.currentCountry && <p className="text-xs text-[#EE1D52]">{errors.currentCountry}</p>}
               </div>
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">

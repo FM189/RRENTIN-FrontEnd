@@ -8,11 +8,11 @@ export interface IRentBooking extends Document {
 
   // ── Tenant personal info ───────────────────────────────────────────────────
   tenantInfo: {
-    fullName:    string;
-    currentCity: string;
-    nationality: string;
-    occupation:  string;
-    designation: string;
+    fullName:       string;
+    currentCountry: string;
+    nationality:    string;
+    occupation:     string;
+    designation:    string;
   };
 
   // ── Stay details ───────────────────────────────────────────────────────────
@@ -28,10 +28,12 @@ export interface IRentBooking extends Document {
   specialRequests: string;
 
   // ── Contract snapshot (locked at booking time) ─────────────────────────────
-  contractMonths:  number;
-  rentalAmount:    number;
+  contractMonths:  number;  // total billing cycles = fullMonths + (remainderDays > 0 ? 1 : 0)
+  rentalAmount:    number;  // monthly rate from matched contract
   securityDeposit: number;
-  totalUpfront:    number;  // rentalAmount + securityDeposit
+  totalUpfront:    number;  // = rentalAmount (first month only — deposit is not charged)
+  dailyRate:       number;  // rentalAmount / 30
+  remainderDays:   number;  // stayDays % 30; 0 means no partial last month
 
   // ── Status lifecycle ───────────────────────────────────────────────────────
   status:
@@ -44,6 +46,22 @@ export interface IRentBooking extends Document {
     | "cancelled";       // cancelled by either party
 
   ownerNote: string;  // reason for rejection or any note from owner
+
+  // ── Rental Agreement ───────────────────────────────────────────────────────
+  agreement: {
+    pdfUrl:          string;
+    ownerSignedAt:   Date | null;
+    tenantSignedAt:  Date | null;
+    ownerIp:         string;
+    tenantIp:        string;
+    // extra fields owner fills during signing
+    ownerAddress:    string;
+    internetCharge:  number;
+    parkingFee:      number;
+    includedItems:       string;  // free-text list of items in premises (clause 31)
+    ownerSignatureData:  string;  // base64 PNG — stored for PDF regeneration when tenant signs
+    tenantSignatureData: string;
+  };
 
   // ── Stripe ─────────────────────────────────────────────────────────────────
   stripe: {
@@ -65,11 +83,11 @@ const RentBookingSchema = new Schema<IRentBooking>(
     propertyId: { type: Schema.Types.ObjectId, ref: "Property", required: true },
 
     tenantInfo: {
-      fullName:    { type: String, required: true, trim: true },
-      currentCity: { type: String, required: true, trim: true },
-      nationality: { type: String, required: true, trim: true },
-      occupation:  { type: String, required: true, trim: true },
-      designation: { type: String, required: true, trim: true },
+      fullName:       { type: String, required: true, trim: true },
+      currentCountry: { type: String, required: true, trim: true },
+      nationality:    { type: String, required: true, trim: true },
+      occupation:     { type: String, required: true, trim: true },
+      designation:    { type: String, required: true, trim: true },
     },
 
     moveInDate:  { type: String, required: true },
@@ -86,6 +104,8 @@ const RentBookingSchema = new Schema<IRentBooking>(
     rentalAmount:    { type: Number, required: true, min: 0 },
     securityDeposit: { type: Number, required: true, min: 0 },
     totalUpfront:    { type: Number, required: true, min: 0 },
+    dailyRate:       { type: Number, required: true, min: 0 },
+    remainderDays:   { type: Number, required: true, min: 0, default: 0 },
 
     status: {
       type:    String,
@@ -94,6 +114,20 @@ const RentBookingSchema = new Schema<IRentBooking>(
     },
 
     ownerNote: { type: String, default: "" },
+
+    agreement: {
+      pdfUrl:         { type: String, default: "" },
+      ownerSignedAt:  { type: Date,   default: null },
+      tenantSignedAt: { type: Date,   default: null },
+      ownerIp:        { type: String, default: "" },
+      tenantIp:       { type: String, default: "" },
+      ownerAddress:   { type: String, default: "" },
+      internetCharge: { type: Number, default: 0 },
+      parkingFee:     { type: Number, default: 0 },
+      includedItems:       { type: String, default: "" },
+      ownerSignatureData:  { type: String, default: "" },
+      tenantSignatureData: { type: String, default: "" },
+    },
 
     stripe: {
       customerId:                { type: String, default: "" },

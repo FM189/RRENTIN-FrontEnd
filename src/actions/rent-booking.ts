@@ -28,7 +28,7 @@ export interface CreateRentBookingInput {
   propertyId:      string;
   // Personal info
   fullName:        string;
-  currentCity:     string;
+  currentCountry:  string;
   nationality:     string;
   occupation:      string;
   designation:     string;
@@ -133,14 +133,19 @@ export async function createRentBooking(
       ? contracts[contracts.length - 1]
       : contracts[contractIdx];
 
-    // Verify client-sent contractMonths matches server resolution
-    if (contract.months !== input.contractMonths) {
+    const rentalAmount    = parsePriceNum(contract.rentPrice);
+    const securityDeposit = parsePriceNum(contract.securityDeposit);
+    const dailyRate       = parseFloat((rentalAmount / 30).toFixed(2));
+    const fullMonths      = Math.floor(input.stayDays / 30);
+    const remainderDays   = input.stayDays % 30;
+    const billingCycles   = fullMonths + (remainderDays > 0 ? 1 : 0);
+
+    // Verify client-sent contractMonths matches server-computed billing cycles
+    if (billingCycles !== input.contractMonths) {
       return { success: false, error: "Contract mismatch. Please refresh and try again." };
     }
 
-    const rentalAmount    = parsePriceNum(contract.rentPrice);
-    const securityDeposit = parsePriceNum(contract.securityDeposit);
-    const totalUpfront    = rentalAmount + securityDeposit;
+    const totalUpfront = rentalAmount; // only first month charged upfront; deposit is not charged
 
     // ── Save booking ──
     const booking = await RentBooking.create({
@@ -149,11 +154,11 @@ export async function createRentBooking(
       propertyId: new Types.ObjectId(input.propertyId),
 
       tenantInfo: {
-        fullName:    input.fullName.trim(),
-        currentCity: input.currentCity.trim(),
-        nationality: input.nationality.trim(),
-        occupation:  input.occupation.trim(),
-        designation: input.designation.trim(),
+        fullName:       input.fullName.trim(),
+        currentCountry: input.currentCountry.trim(),
+        nationality:    input.nationality.trim(),
+        occupation:     input.occupation.trim(),
+        designation:    input.designation.trim(),
       },
 
       moveInDate:  input.moveInDate,
@@ -166,10 +171,12 @@ export async function createRentBooking(
       visaType:        input.visaType,
       specialRequests: input.specialRequests?.trim() ?? "",
 
-      contractMonths:  contract.months,
+      contractMonths:  billingCycles,
       rentalAmount,
       securityDeposit,
       totalUpfront,
+      dailyRate,
+      remainderDays,
 
       status: "pending",
     });
@@ -309,11 +316,20 @@ export interface RentBookingDetail {
   unitArea:        string;
   unitAreaUnit:    string;
   tenantInfo: {
-    fullName:    string;
-    currentCity: string;
-    nationality: string;
-    occupation:  string;
-    designation: string;
+    fullName:       string;
+    currentCountry: string;
+    nationality:    string;
+    occupation:     string;
+    designation:    string;
+  };
+  agreement: {
+    pdfUrl:         string;
+    ownerSignedAt:  string | null;
+    tenantSignedAt: string | null;
+    ownerAddress:   string;
+    internetCharge: number;
+    parkingFee:     number;
+    includedItems:  string;
   };
   moveInDate:      string;
   moveOutDate:     string;
@@ -327,6 +343,8 @@ export interface RentBookingDetail {
   rentalAmount:    number;
   securityDeposit: number;
   totalUpfront:    number;
+  dailyRate:       number;
+  remainderDays:   number;
   status:          string;
   ownerNote:       string;
   createdAt:       string;
@@ -365,11 +383,20 @@ export async function getRentBookingDetail(id: string): Promise<RentBookingDetai
     unitArea:        prop?.unitArea      ?? "",
     unitAreaUnit:    prop?.unitAreaUnit   ?? "sqm",
     tenantInfo: {
-      fullName:    doc.tenantInfo.fullName,
-      currentCity: doc.tenantInfo.currentCity,
-      nationality: doc.tenantInfo.nationality,
-      occupation:  doc.tenantInfo.occupation,
-      designation: doc.tenantInfo.designation,
+      fullName:       doc.tenantInfo.fullName,
+      currentCountry: doc.tenantInfo.currentCountry,
+      nationality:    doc.tenantInfo.nationality,
+      occupation:     doc.tenantInfo.occupation,
+      designation:    doc.tenantInfo.designation,
+    },
+    agreement: {
+      pdfUrl:         doc.agreement?.pdfUrl        ?? "",
+      ownerSignedAt:  doc.agreement?.ownerSignedAt  ? new Date(doc.agreement.ownerSignedAt).toISOString()  : null,
+      tenantSignedAt: doc.agreement?.tenantSignedAt ? new Date(doc.agreement.tenantSignedAt).toISOString() : null,
+      ownerAddress:   doc.agreement?.ownerAddress   ?? "",
+      internetCharge: doc.agreement?.internetCharge ?? 0,
+      parkingFee:     doc.agreement?.parkingFee     ?? 0,
+      includedItems:  doc.agreement?.includedItems  ?? "",
     },
     moveInDate:      doc.moveInDate,
     moveOutDate:     doc.moveOutDate,
@@ -383,6 +410,8 @@ export async function getRentBookingDetail(id: string): Promise<RentBookingDetai
     rentalAmount:    doc.rentalAmount,
     securityDeposit: doc.securityDeposit,
     totalUpfront:    doc.totalUpfront,
+    dailyRate:       doc.dailyRate,
+    remainderDays:   doc.remainderDays,
     status:          doc.status,
     ownerNote:       doc.ownerNote ?? "",
     createdAt:       doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt),
