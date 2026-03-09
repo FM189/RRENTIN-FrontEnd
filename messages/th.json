@@ -812,8 +812,8 @@
     "ownerVisitRequests": {
       "title": "คำขอเยี่ยมชม",
       "pageDescription": "ตรวจสอบและจัดการคำขอเยี่ยมชมจากผู้เช่า",
-      "noRequests": "ยังไม่มีคำขอเยี่ยมชม",
-      "noRequestsDesc": "เมื่อผู้เช่าส่งคำขอเยี่ยมชมทรัพย์สินของคุณ จะปรากฏที่นี่",
+      "noRequests": "ยังไม่มีข้อเสนอ",
+      "noRequestsDesc": "เมื่อผู้เช่าส่งคำขอเยี่ยมชมหรือคำขอเช่า จะปรากฏที่นี่",
       "statusAll": "ทั้งหมด",
       "statusPaymentConfirmed": "รอการตรวจสอบ",
       "statusAccepted": "ยอมรับแล้ว",

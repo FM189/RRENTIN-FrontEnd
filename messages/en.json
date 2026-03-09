@@ -812,8 +812,8 @@
     "ownerVisitRequests": {
       "title": "Visit Requests",
       "pageDescription": "Review and manage property visit requests from tenants.",
-      "noRequests": "No visit requests yet",
-      "noRequestsDesc": "When tenants request to visit your properties, they will appear here.",
+      "noRequests": "No proposals yet",
+      "noRequestsDesc": "When tenants submit visit requests or rental bookings, they will appear here.",
       "statusAll": "All",
       "statusPaymentConfirmed": "Pending Review",
       "statusAccepted": "Accepted",
