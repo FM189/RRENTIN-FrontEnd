@@ -67,6 +67,20 @@ const ARRIVAL_TIMES = [
   "10:00 PM - 12:00 AM",
 ];
 
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex items-center">
+      <span className="flex h-3.5 w-3.5 cursor-default items-center justify-center rounded-full bg-[rgba(2,69,165,0.15)] text-[9px] font-bold text-[#0245A5] select-none">
+        i
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-[180px] -translate-x-1/2 rounded-[4px] bg-[#0245A5] px-2.5 py-1.5 text-[10px] leading-snug text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+        {text}
+        <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#0245A5]" />
+      </span>
+    </span>
+  );
+}
+
 function parsePriceNum(val: string | number): number {
   if (typeof val === "number") return val;
   return parseFloat(String(val).replace(/,/g, "")) || 0;
@@ -165,7 +179,14 @@ function FormInput({
   );
 }
 
-export default function RentBookingClient({ property }: { property: TenantBookingProperty }) {
+interface RentBookingClientProps {
+  property: TenantBookingProperty;
+  tenantContractFeeEnabled: boolean;
+  tenantContractFeeRate: number;
+  vatRate: number;
+}
+
+export default function RentBookingClient({ property, tenantContractFeeEnabled, tenantContractFeeRate, vatRate }: RentBookingClientProps) {
   const t = useTranslations("Dashboard.tenantProperties.rentBooking");
   const router = useRouter();
   const { user } = useCurrentUser();
@@ -223,6 +244,14 @@ export default function RentBookingClient({ property }: { property: TenantBookin
   const billingCycles    = fullMonths + (remainderDays > 0 ? 1 : 0);
   const partialMonthCost = remainderDays > 0 ? dailyRate * remainderDays : 0;
   const totalContractValue = (fullMonths * rentalAmount) + partialMonthCost;
+  const tenantContractFee = tenantContractFeeEnabled && totalContractValue > 0
+    ? Math.round(tenantContractFeeRate * totalContractValue)
+    : 0;
+  const tenantContractFeeVat = tenantContractFee > 0
+    ? Math.round(vatRate * tenantContractFee)
+    : 0;
+  const totalContractValueWithFees = totalContractValue + tenantContractFee + tenantContractFeeVat;
+  const chargedToday = rentalAmount + tenantContractFee + tenantContractFeeVat;
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof BookingFormData, string>> = {};
@@ -500,15 +529,42 @@ export default function RentBookingClient({ property }: { property: TenantBookin
                   </div>
                   <p className="text-xs text-[#969696]">{t("securityNote")}</p>
                 </div>
+                {/* Rent total + fees block */}
+                {(tenantContractFee > 0 || tenantContractFeeVat > 0) && (
+                  <div className="flex flex-col gap-2 rounded-[4px] border border-[rgba(2,69,165,0.15)] bg-[rgba(2,69,165,0.03)] px-2.5 py-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-[#545454]">{t("rentTotal")}</p>
+                      <p className="text-xs font-semibold text-[#545454]">{formatPrice(totalContractValue)}</p>
+                    </div>
+                    {tenantContractFee > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-xs font-medium text-[#32343C]">
+                          {t("contractFee")}
+                          <InfoTooltip text={t("contractFeeTooltip", { rate: (tenantContractFeeRate * 100).toFixed(0) })} />
+                        </span>
+                        <p className="text-xs font-semibold text-[#32343C]">+{formatPrice(tenantContractFee)}</p>
+                      </div>
+                    )}
+                    {tenantContractFeeVat > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-xs font-medium text-[#32343C]">
+                          {t("contractFeeVat")}
+                          <InfoTooltip text={t("contractFeeVatTooltip", { rate: (vatRate * 100).toFixed(0) })} />
+                        </span>
+                        <p className="text-xs font-semibold text-[#32343C]">+{formatPrice(tenantContractFeeVat)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Total contract value */}
                 <div className="border-t border-[rgba(102,102,102,0.2)] pt-2 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium text-[#969696]">{t("totalContractValue")}</p>
-                    <p className="text-xs font-semibold text-[#969696]">{formatPrice(totalContractValue)}</p>
+                    <p className="text-xs font-semibold text-[#969696]">{formatPrice(totalContractValueWithFees)}</p>
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-[#32343C]">{t("chargedToday")}</p>
-                    <p className="text-base font-bold text-primary">{formatPrice(rentalAmount)}</p>
+                    <p className="text-base font-bold text-primary">{formatPrice(chargedToday)}</p>
                   </div>
                   <p className="text-xs text-[#969696]">{t("chargedTodayNote")}</p>
                 </div>

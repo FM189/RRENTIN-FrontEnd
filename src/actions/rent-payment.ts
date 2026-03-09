@@ -23,10 +23,13 @@ async function requireSession() {
 // for later security deposit charges — all in one step.
 
 export async function createRentPaymentIntent(bookingId: string): Promise<{
-  clientSecret:    string;
-  paymentIntentId: string;
-  rentalAmount:    number;
-  securityDeposit: number;
+  clientSecret:         string;
+  paymentIntentId:      string;
+  rentalAmount:         number;
+  securityDeposit:      number;
+  tenantContractFee:    number;
+  tenantContractFeeVat: number;
+  tenantTotalCharged:   number;
 }> {
   const user = await requireSession();
   await dbConnect();
@@ -64,22 +67,26 @@ export async function createRentPaymentIntent(bookingId: string): Promise<{
     // Reuse if still awaiting payment
     if (existing.status === "requires_payment_method" || existing.status === "requires_confirmation" || existing.status === "requires_action") {
       return {
-        clientSecret:    existing.client_secret!,
-        paymentIntentId: existing.id,
-        rentalAmount:    booking.rentalAmount,
-        securityDeposit: booking.securityDeposit,
+        clientSecret:         existing.client_secret!,
+        paymentIntentId:      existing.id,
+        rentalAmount:         booking.rentalAmount,
+        securityDeposit:      booking.securityDeposit,
+        tenantContractFee:    booking.fees?.tenantContractFee    ?? 0,
+        tenantContractFeeVat: booking.fees?.tenantContractFeeVat ?? 0,
+        tenantTotalCharged:   booking.fees?.tenantTotalCharged   ?? booking.rentalAmount,
       };
     }
   }
 
   // ── Create new PaymentIntent ──
-  const amountCents = Math.round(booking.rentalAmount * 100);
+  // Use tenantTotalCharged which includes contract fee + VAT if enabled
+  const chargeAmount = booking.fees?.tenantTotalCharged ?? booking.rentalAmount;
+  const amountCents  = Math.round(chargeAmount * 100);
 
   const pi = await stripe.paymentIntents.create({
     amount:      amountCents,
     currency:    "thb",
     customer:    customerId,
-    setup_future_usage: "off_session",
     automatic_payment_methods: { enabled: true },
     description: `First month rent — booking ${bookingId}`,
     metadata:    { bookingId, type: "rent_first_month" },
@@ -91,10 +98,13 @@ export async function createRentPaymentIntent(bookingId: string): Promise<{
   });
 
   return {
-    clientSecret:    pi.client_secret!,
-    paymentIntentId: pi.id,
-    rentalAmount:    booking.rentalAmount,
-    securityDeposit: booking.securityDeposit,
+    clientSecret:         pi.client_secret!,
+    paymentIntentId:      pi.id,
+    rentalAmount:         booking.rentalAmount,
+    securityDeposit:      booking.securityDeposit,
+    tenantContractFee:    booking.fees?.tenantContractFee    ?? 0,
+    tenantContractFeeVat: booking.fees?.tenantContractFeeVat ?? 0,
+    tenantTotalCharged:   booking.fees?.tenantTotalCharged   ?? booking.rentalAmount,
   };
 }
 

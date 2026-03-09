@@ -111,13 +111,16 @@ interface Props {
 export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess }: Props) {
   const t = useTranslations("Dashboard.rentPaymentModal");
 
-  const [clientSecret,    setClientSecret]    = useState<string | null>(null);
-  const [paymentIntentId, setPaymentIntentId] = useState("");
-  const [rentalAmount,    setRentalAmount]    = useState(0);
-  const [securityDeposit, setSecurityDeposit] = useState(0);
-  const [loadingPI,       setLoadingPI]       = useState(false);
-  const [piError,         setPiError]         = useState<string | null>(null);
-  const [succeeded,       setSucceeded]       = useState(false);
+  const [clientSecret,         setClientSecret]         = useState<string | null>(null);
+  const [paymentIntentId,      setPaymentIntentId]      = useState("");
+  const [rentalAmount,         setRentalAmount]         = useState(0);
+  const [securityDeposit,      setSecurityDeposit]      = useState(0);
+  const [tenantContractFee,    setTenantContractFee]    = useState(0);
+  const [tenantContractFeeVat, setTenantContractFeeVat] = useState(0);
+  const [tenantTotalCharged,   setTenantTotalCharged]   = useState(0);
+  const [loadingPI,            setLoadingPI]            = useState(false);
+  const [piError,              setPiError]              = useState<string | null>(null);
+  const [succeeded,            setSucceeded]            = useState(false);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -133,6 +136,9 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
         setPaymentIntentId(r.paymentIntentId);
         setRentalAmount(r.rentalAmount);
         setSecurityDeposit(r.securityDeposit);
+        setTenantContractFee(r.tenantContractFee);
+        setTenantContractFeeVat(r.tenantContractFeeVat);
+        setTenantTotalCharged(r.tenantTotalCharged);
       })
       .catch((err) => setPiError(err?.message ?? t("initFailed")))
       .finally(() => setLoadingPI(false));
@@ -223,14 +229,26 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
                   <span className="text-[#545454]">{t("firstMonthRent")}</span>
                   <span className="font-semibold text-[#32343C]">{formatPrice(detail.rentalAmount)}</span>
                 </div>
+                {tenantContractFee > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#545454]">{t("contractFee")}</span>
+                    <span className="font-semibold text-[#32343C]">{formatPrice(tenantContractFee)}</span>
+                  </div>
+                )}
+                {tenantContractFeeVat > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#545454]">{t("contractFeeVat")}</span>
+                    <span className="font-semibold text-[#32343C]">{formatPrice(tenantContractFeeVat)}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[#545454]">{t("securityDeposit")}</span>
-                  <span className="font-semibold text-[#32343C]">{formatPrice(detail.securityDeposit)}</span>
+                  <span className="text-[#969696]">{formatPrice(detail.securityDeposit)} <span className="text-xs">({t("savedNotCharged")})</span></span>
                 </div>
                 <div className="border-t border-[rgba(65,65,65,0.1)] pt-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-[#32343C]">{t("chargedToday")}</span>
-                    <span className="text-base font-bold text-[#0245A5]">{formatPrice(detail.rentalAmount)}</span>
+                    <span className="text-base font-bold text-[#0245A5]">{formatPrice(tenantTotalCharged || detail.rentalAmount)}</span>
                   </div>
                 </div>
               </div>
@@ -256,7 +274,7 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
                 <CheckoutForm
                   bookingId={bookingId}
                   paymentIntentId={paymentIntentId}
-                  rentalAmount={rentalAmount}
+                  rentalAmount={tenantTotalCharged || rentalAmount}
                   securityDeposit={securityDeposit}
                   onBack={onClose}
                   onSuccess={handleSuccess}

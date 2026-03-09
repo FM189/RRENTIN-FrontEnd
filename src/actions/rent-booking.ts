@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import RentBooking from "@/models/RentBooking";
 import Property from "@/models/Property";
+import PlatformFees from "@/models/PlatformFees";
 import { createNotification } from "@/actions/notifications";
 import { NotificationType } from "@/types/notifications";
 
@@ -145,7 +146,25 @@ export async function createRentBooking(
       return { success: false, error: "Contract mismatch. Please refresh and try again." };
     }
 
-    const totalUpfront = rentalAmount; // only first month charged upfront; deposit is not charged
+    // ── Fetch and snapshot platform fees ──
+    const pf = await PlatformFees.findOne({ isActive: true }).lean();
+
+    const tenantFeeEnabled = pf?.tenantContractFeeEnabled ?? true;
+    const tenantFeeRate    = pf?.tenantContractFeeRate    ?? 0.05;
+    const ownerFeeEnabled  = pf?.ownerContractFeeEnabled  ?? true;
+    const ownerFeeRate     = pf?.ownerContractFeeRate     ?? 0.05;
+    const vatRate          = pf?.vatRate                  ?? 0.07;
+    const platformFeeRate  = pf?.platformFeeRate          ?? 0.09;
+    const stripeFeePercent = pf?.stripeFeePercent         ?? 0.034;
+    const stripeFeeFixed   = pf?.stripeFeeFixed           ?? 10;
+
+    const totalContractValue  = (fullMonths * rentalAmount) + (remainderDays * dailyRate);
+    const tenantContractFee   = tenantFeeEnabled ? Math.round(tenantFeeRate * totalContractValue) : 0;
+    const tenantContractFeeVat = tenantFeeEnabled ? Math.round(vatRate * tenantContractFee) : 0;
+    const tenantTotalCharged  = rentalAmount + tenantContractFee + tenantContractFeeVat;
+    const ownerContractFee    = ownerFeeEnabled  ? Math.round(ownerFeeRate  * totalContractValue) : 0;
+
+    const totalUpfront = tenantTotalCharged; // first month + contract fee + VAT; deposit is not charged
 
     // ── Save booking ──
     const booking = await RentBooking.create({
@@ -177,6 +196,21 @@ export async function createRentBooking(
       totalUpfront,
       dailyRate,
       remainderDays,
+
+      fees: {
+        tenantContractFeeEnabled: tenantFeeEnabled,
+        tenantContractFeeRate:    tenantFeeRate,
+        tenantContractFee,
+        tenantContractFeeVat,
+        tenantTotalCharged,
+        ownerContractFeeEnabled:  ownerFeeEnabled,
+        ownerContractFeeRate:     ownerFeeRate,
+        ownerContractFee,
+        platformFeeRate,
+        vatRate,
+        stripeFeePercent,
+        stripeFeeFixed,
+      },
 
       status: "pending",
     });
@@ -345,6 +379,20 @@ export interface RentBookingDetail {
   totalUpfront:    number;
   dailyRate:       number;
   remainderDays:   number;
+  fees: {
+    tenantContractFeeEnabled: boolean;
+    tenantContractFeeRate:    number;
+    tenantContractFee:        number;
+    tenantContractFeeVat:     number;
+    tenantTotalCharged:       number;
+    ownerContractFeeEnabled:  boolean;
+    ownerContractFeeRate:     number;
+    ownerContractFee:         number;
+    platformFeeRate:          number;
+    vatRate:                  number;
+    stripeFeePercent:         number;
+    stripeFeeFixed:           number;
+  };
   status:          string;
   ownerNote:       string;
   createdAt:       string;
@@ -412,6 +460,20 @@ export async function getRentBookingDetail(id: string): Promise<RentBookingDetai
     totalUpfront:    doc.totalUpfront,
     dailyRate:       doc.dailyRate,
     remainderDays:   doc.remainderDays,
+    fees: {
+      tenantContractFeeEnabled: doc.fees?.tenantContractFeeEnabled ?? true,
+      tenantContractFeeRate:    doc.fees?.tenantContractFeeRate    ?? 0.05,
+      tenantContractFee:        doc.fees?.tenantContractFee        ?? 0,
+      tenantContractFeeVat:     doc.fees?.tenantContractFeeVat     ?? 0,
+      tenantTotalCharged:       doc.fees?.tenantTotalCharged       ?? doc.rentalAmount,
+      ownerContractFeeEnabled:  doc.fees?.ownerContractFeeEnabled  ?? true,
+      ownerContractFeeRate:     doc.fees?.ownerContractFeeRate     ?? 0.05,
+      ownerContractFee:         doc.fees?.ownerContractFee         ?? 0,
+      platformFeeRate:          doc.fees?.platformFeeRate          ?? 0.09,
+      vatRate:                  doc.fees?.vatRate                  ?? 0.07,
+      stripeFeePercent:         doc.fees?.stripeFeePercent         ?? 0.034,
+      stripeFeeFixed:           doc.fees?.stripeFeeFixed           ?? 10,
+    },
     status:          doc.status,
     ownerNote:       doc.ownerNote ?? "",
     createdAt:       doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt),

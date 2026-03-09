@@ -1,5 +1,25 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
+export interface IBookingFees {
+  // Tenant-side (charged at first payment)
+  tenantContractFeeEnabled: boolean;
+  tenantContractFeeRate:    number;   // snapshot from PlatformFees
+  tenantContractFee:        number;   // calculated amount (0 if disabled)
+  tenantContractFeeVat:     number;   // VAT on contract fee (0 if disabled)
+  tenantTotalCharged:       number;   // rentalAmount + contractFee + vat = PI amount
+
+  // Owner-side (deducted from first payout)
+  ownerContractFeeEnabled: boolean;
+  ownerContractFeeRate:    number;   // snapshot from PlatformFees
+  ownerContractFee:        number;   // calculated amount (0 if disabled)
+
+  // Snapshotted rates for recurring payout calculations
+  platformFeeRate:  number;
+  vatRate:          number;
+  stripeFeePercent: number;
+  stripeFeeFixed:   number;
+}
+
 export interface IRentBooking extends Document {
   // ── Relations ──────────────────────────────────────────────────────────────
   tenantId:   Types.ObjectId;
@@ -62,6 +82,9 @@ export interface IRentBooking extends Document {
     ownerSignatureData:  string;  // base64 PNG — stored for PDF regeneration when tenant signs
     tenantSignatureData: string;
   };
+
+  // ── Fee snapshot (locked at booking creation from PlatformFees) ───────────
+  fees: IBookingFees;
 
   // ── Stripe ─────────────────────────────────────────────────────────────────
   stripe: {
@@ -127,6 +150,21 @@ const RentBookingSchema = new Schema<IRentBooking>(
       includedItems:       { type: String, default: "" },
       ownerSignatureData:  { type: String, default: "" },
       tenantSignatureData: { type: String, default: "" },
+    },
+
+    fees: {
+      tenantContractFeeEnabled: { type: Boolean, default: true  },
+      tenantContractFeeRate:    { type: Number,  default: 0.05  },
+      tenantContractFee:        { type: Number,  default: 0     },
+      tenantContractFeeVat:     { type: Number,  default: 0     },
+      tenantTotalCharged:       { type: Number,  default: 0     },
+      ownerContractFeeEnabled:  { type: Boolean, default: true  },
+      ownerContractFeeRate:     { type: Number,  default: 0.05  },
+      ownerContractFee:         { type: Number,  default: 0     },
+      platformFeeRate:          { type: Number,  default: 0.09  },
+      vatRate:                  { type: Number,  default: 0.07  },
+      stripeFeePercent:         { type: Number,  default: 0.034 },
+      stripeFeeFixed:           { type: Number,  default: 10    },
     },
 
     stripe: {

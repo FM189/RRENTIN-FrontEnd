@@ -168,6 +168,12 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
                 <div className="flex flex-col gap-2">
                   <Row label={t("fieldRental")}  value={formatPrice(detail.rentalAmount)} />
                   <Row label={t("fieldDeposit")} value={formatPrice(detail.securityDeposit)} />
+                  {(detail.fees?.tenantContractFee ?? 0) > 0 && (
+                    <Row label={t("fieldContractFee")}    value={formatPrice(detail.fees!.tenantContractFee)} />
+                  )}
+                  {(detail.fees?.tenantContractFeeVat ?? 0) > 0 && (
+                    <Row label={t("fieldContractFeeVat")} value={formatPrice(detail.fees!.tenantContractFeeVat)} />
+                  )}
                   <div className="border-t border-[rgba(65,65,65,0.1)] pt-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-[#32343C]">{t("fieldTotal")}</span>

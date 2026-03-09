@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTenantBookingProperty } from "@/actions/tenant-properties";
 import RentBookingClient from "@/components/tenant/properties/RentBookingClient";
+import dbConnect from "@/lib/mongodb";
+import PlatformFees from "@/models/PlatformFees";
 
 interface BookingPageProps {
   params: Promise<{ id: string }>;
@@ -20,9 +22,21 @@ export async function generateMetadata({ params }: BookingPageProps): Promise<Me
 
 export default async function RentBookingPage({ params }: BookingPageProps) {
   const { id } = await params;
-  const property = await getTenantBookingProperty(id);
+  const [property] = await Promise.all([
+    getTenantBookingProperty(id),
+    dbConnect(),
+  ]);
 
   if (!property) notFound();
 
-  return <RentBookingClient property={property} />;
+  const fees = await PlatformFees.findOne({ isActive: true }).lean();
+
+  return (
+    <RentBookingClient
+      property={property}
+      tenantContractFeeEnabled={fees?.tenantContractFeeEnabled ?? true}
+      tenantContractFeeRate={fees?.tenantContractFeeRate ?? 0.05}
+      vatRate={fees?.vatRate ?? 0.07}
+    />
+  );
 }
