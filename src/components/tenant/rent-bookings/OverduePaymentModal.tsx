@@ -6,7 +6,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useTranslations } from "next-intl";
 import { formatPrice } from "@/lib/format";
-import { createRentPaymentIntent, confirmRentPayment } from "@/actions/rent-payment";
+import { createOverduePaymentIntent, confirmRentPayment } from "@/actions/rent-payment";
 import type { RentBookingDetail } from "@/actions/rent-booking";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -16,16 +16,13 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 interface CheckoutFormProps {
   bookingId:       string;
   paymentIntentId: string;
-  rentalAmount:    number;
-  securityDeposit: number;
+  overdueAmount:   number;
   onBack:          () => void;
   onSuccess:       () => void;
 }
 
-function CheckoutForm({
-  bookingId, paymentIntentId, rentalAmount, securityDeposit, onBack, onSuccess,
-}: CheckoutFormProps) {
-  const t        = useTranslations("Dashboard.rentPaymentModal");
+function CheckoutForm({ bookingId, paymentIntentId, overdueAmount, onBack, onSuccess }: CheckoutFormProps) {
+  const t        = useTranslations("Dashboard.overduePaymentModal");
   const stripe   = useStripe();
   const elements = useElements();
 
@@ -51,7 +48,6 @@ function CheckoutForm({
         return;
       }
 
-      // No redirect = payment succeeded on-page
       const result = await confirmRentPayment(bookingId, paymentIntentId);
       if (!result.success) {
         setError(result.error ?? t("paymentFailed"));
@@ -95,7 +91,7 @@ function CheckoutForm({
           {loading && (
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
           )}
-          {t("confirm", { amount: formatPrice(rentalAmount) })}
+          {t("confirm", { amount: formatPrice(overdueAmount) })}
         </button>
       </div>
     </div>
@@ -113,19 +109,17 @@ interface Props {
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
-export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess }: Props) {
-  const t = useTranslations("Dashboard.rentPaymentModal");
+export default function OverduePaymentModal({ bookingId, detail, onClose, onSuccess }: Props) {
+  const t = useTranslations("Dashboard.overduePaymentModal");
 
-  const [clientSecret,         setClientSecret]         = useState<string | null>(null);
-  const [paymentIntentId,      setPaymentIntentId]      = useState("");
-  const [rentalAmount,         setRentalAmount]         = useState(detail.rentalAmount);
-  const [securityDeposit,      setSecurityDeposit]      = useState(detail.securityDeposit);
-  const [tenantContractFee,    setTenantContractFee]    = useState(detail.fees?.tenantContractFee    ?? 0);
-  const [tenantContractFeeVat, setTenantContractFeeVat] = useState(detail.fees?.tenantContractFeeVat ?? 0);
-  const [tenantTotalCharged,   setTenantTotalCharged]   = useState(detail.fees?.tenantTotalCharged   ?? detail.rentalAmount);
-  const [loadingPI,            setLoadingPI]            = useState(false);
-  const [piError,              setPiError]              = useState<string | null>(null);
-  const [succeeded,            setSucceeded]            = useState(false);
+  const [clientSecret,    setClientSecret]    = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState("");
+  const [overdueAmount,   setOverdueAmount]   = useState(detail.overdueAmount ?? 0);
+  const [hasLateFee,      setHasLateFee]      = useState(false);
+  const [lateFee,         setLateFee]         = useState(0);
+  const [loadingPI,       setLoadingPI]       = useState(false);
+  const [piError,         setPiError]         = useState<string | null>(null);
+  const [succeeded,       setSucceeded]       = useState(false);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -135,23 +129,19 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
     setLoadingPI(true);
     setPiError(null);
 
-    createRentPaymentIntent(bookingId)
+    createOverduePaymentIntent(bookingId)
       .then((r) => {
         setClientSecret(r.clientSecret);
         setPaymentIntentId(r.paymentIntentId);
-        setRentalAmount(r.rentalAmount);
-        setSecurityDeposit(r.securityDeposit);
-        setTenantContractFee(r.tenantContractFee);
-        setTenantContractFeeVat(r.tenantContractFeeVat);
-        setTenantTotalCharged(r.tenantTotalCharged);
+        setOverdueAmount(r.overdueAmount);
+        setHasLateFee(r.hasLateFee);
+        setLateFee(r.lateFee);
       })
       .catch((err) => setPiError(err?.message ?? t("initFailed")))
       .finally(() => setLoadingPI(false));
   }, [bookingId, t]);
 
-  const handleSuccess = () => {
-    setSucceeded(true);
-  };
+  const baseRent = hasLateFee ? overdueAmount - lateFee : overdueAmount;
 
   return (
     <div
@@ -230,30 +220,27 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
             <div className="rounded-[6px] border border-[rgba(102,102,102,0.12)] p-4">
               <p className="mb-3 text-sm font-bold text-[#32343C]">{t("priceSummary")}</p>
               <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#545454]">{t("firstMonthRent")}</span>
-                  <span className="font-semibold text-[#32343C]">{formatPrice(detail.rentalAmount)}</span>
-                </div>
-                {tenantContractFee > 0 && (
+                {hasLateFee ? (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#545454]">{t("overdueRent")}</span>
+                      <span className="font-semibold text-[#32343C]">{formatPrice(baseRent)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#E35454]">{t("lateFee")}</span>
+                      <span className="font-semibold text-[#E35454]">{formatPrice(lateFee)}</span>
+                    </div>
+                  </>
+                ) : (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#545454]">{t("contractFee")}</span>
-                    <span className="font-semibold text-[#32343C]">{formatPrice(tenantContractFee)}</span>
+                    <span className="text-[#545454]">{t("overdueRent")}</span>
+                    <span className="font-semibold text-[#32343C]">{formatPrice(overdueAmount)}</span>
                   </div>
                 )}
-                {tenantContractFeeVat > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#545454]">{t("contractFeeVat")}</span>
-                    <span className="font-semibold text-[#32343C]">{formatPrice(tenantContractFeeVat)}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#545454]">{t("securityDeposit")}</span>
-                  <span className="text-[#969696]">{formatPrice(detail.securityDeposit)} <span className="text-xs">({t("savedNotCharged")})</span></span>
-                </div>
                 <div className="border-t border-[rgba(65,65,65,0.1)] pt-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#32343C]">{t("chargedToday")}</span>
-                    <span className="text-base font-bold text-[#0245A5]">{formatPrice(tenantTotalCharged || detail.rentalAmount)}</span>
+                    <span className="text-sm font-bold text-[#32343C]">{t("totalDue")}</span>
+                    <span className="text-base font-bold text-[#E35454]">{formatPrice(overdueAmount)}</span>
                   </div>
                 </div>
               </div>
@@ -279,10 +266,9 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
                 <CheckoutForm
                   bookingId={bookingId}
                   paymentIntentId={paymentIntentId}
-                  rentalAmount={tenantTotalCharged || rentalAmount}
-                  securityDeposit={securityDeposit}
+                  overdueAmount={overdueAmount}
                   onBack={onClose}
-                  onSuccess={handleSuccess}
+                  onSuccess={() => setSucceeded(true)}
                 />
               </Elements>
             )}

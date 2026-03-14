@@ -17,6 +17,9 @@ export interface IPlatformFees extends Document {
   ownerContractFeeEnabled: boolean;  // toggle on/off
   ownerContractFeeRate:    number;   // e.g. 0.05 → 5% of total contract value
 
+  // Late fee (applied after all charge retries exhausted)
+  lateFeeRate: number;   // e.g. 0.15 → 15% of monthly rent amount — platform revenue only
+
   // Deposit rules
   depositRefundWindowDays:  number;  // e.g. 3    → days after moveOut owner can raise issue
   depositHoldTriggerHours:  number;  // e.g. 24   → hours before moveOut to trigger real hold
@@ -44,6 +47,8 @@ const PlatformFeesSchema = new Schema<IPlatformFees>(
 
     ownerContractFeeEnabled: { type: Boolean, default: true },
     ownerContractFeeRate:    { type: Number, required: true, default: 0.05 },
+
+    lateFeeRate: { type: Number, required: true, default: 0.15 },
 
     depositRefundWindowDays:  { type: Number, required: true, default: 3    },
     depositHoldTriggerHours:  { type: Number, required: true, default: 24   },

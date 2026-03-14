@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { getRentBookingDetail, ownerDecideRentBooking } from "@/actions/rent-booking";
 import type { RentBookingDetail } from "@/actions/rent-booking";
 import { formatPrice } from "@/lib/format";
+import RentPaymentHistorySection from "@/components/shared/RentPaymentHistorySection";
 import OwnerAgreementModal from "./OwnerAgreementModal";
 
 interface Props {
@@ -31,6 +32,7 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
   const [loading,  setLoading]  = useState(true);
   const [imgIndex, setImgIndex] = useState(0);
 
+  const [activeTab,     setActiveTab]     = useState<"price" | "history">("price");
   const [isPending,     startTransition]  = useTransition();
   const [rejectNote,    setRejectNote]    = useState("");
   const [showReject,    setShowReject]    = useState(false);
@@ -188,44 +190,133 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
                   )}
                 </Section>
 
-                {/* Price summary */}
-                <Section title={t("sectionPrice")}>
-                  {(() => {
-                    const fullMonths  = Math.floor(detail.stayDays / 30);
-                    const remainder   = detail.remainderDays ?? 0;
-                    const fullCost    = fullMonths * detail.rentalAmount;
-                    const partialCost = remainder * (detail.dailyRate ?? 0);
-                    const total       = fullCost + partialCost;
-                    return (
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-[#545454]">{t("fieldDailyRate")}</span>
-                          <span className="font-medium text-[#32343C]">{formatPrice(detail.dailyRate ?? 0)} {t("perDay")}</span>
-                        </div>
-                        <div className="border-t border-[rgba(65,65,65,0.1)] pt-2 flex flex-col gap-1.5">
-                          {fullMonths > 0 && (
+                {/* Tabs: Price Summary | Payment History */}
+                <div>
+                  <div className="flex border-b border-[rgba(65,65,65,0.12)]">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("price")}
+                      className={`px-4 py-2 text-sm font-semibold transition-colors ${
+                        activeTab === "price"
+                          ? "border-b-2 border-[#0245A5] text-[#0245A5]"
+                          : "text-[#969696] hover:text-[#32343C]"
+                      }`}
+                    >
+                      {t("tabPrice")}
+                    </button>
+                    {(detail.status === "active" || detail.status === "completed") && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("history")}
+                        className={`px-4 py-2 text-sm font-semibold transition-colors ${
+                          activeTab === "history"
+                            ? "border-b-2 border-[#0245A5] text-[#0245A5]"
+                            : "text-[#969696] hover:text-[#32343C]"
+                        }`}
+                      >
+                        {t("tabHistory")}
+                      </button>
+                    )}
+                  </div>
+                  <div className="pt-4">
+                    {activeTab === "price" && (() => {
+                      const fullMonths           = Math.floor(detail.stayDays / 30);
+                      const remainder            = detail.remainderDays ?? 0;
+                      const fullCost             = fullMonths * detail.rentalAmount;
+                      const partialCost          = Math.round(remainder * (detail.dailyRate ?? 0));
+                      const baseTotal            = fullCost + partialCost;
+                      const ownerContractFee     = detail.fees?.ownerContractFee     ?? 0;
+                      const ownerContractFeeRate = detail.fees?.ownerContractFeeRate  ?? 0;
+                      const platformFeeRate      = detail.fees?.platformFeeRate       ?? 0.09;
+                      const vatRate              = detail.fees?.vatRate               ?? 0.07;
+                      const stripeFeePercent     = detail.fees?.stripeFeePercent      ?? 0.034;
+                      const stripeFeeFixed       = detail.fees?.stripeFeeFixed        ?? 10;
+                      const vatOnOwnerFee        = ownerContractFee > 0 ? Math.round(vatRate * ownerContractFee) : 0;
+                      // Number of separate Stripe charges across the contract
+                      const paymentCount         = fullMonths + (remainder > 0 ? 1 : 0);
+                      const totalPlatformFee     = Math.round(platformFeeRate * baseTotal);
+                      const totalVatOnPlatform   = Math.round(vatRate * totalPlatformFee);
+                      const totalStripeFee       = Math.round(stripeFeePercent * baseTotal + stripeFeeFixed * paymentCount);
+                      const ownerNet             = baseTotal - ownerContractFee - vatOnOwnerFee - totalPlatformFee - totalVatOnPlatform - totalStripeFee;
+                      return (
+                        <div className="flex flex-col gap-0">
+                          {/* Rates */}
+                          <div className="flex flex-col gap-1.5 pb-3">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-[#545454]">{fullMonths} {fullMonths === 1 ? t("month") : t("months")} × {formatPrice(detail.rentalAmount)}</span>
-                              <span className="font-medium text-[#32343C]">{formatPrice(fullCost)}</span>
+                              <span className="text-[#545454]">{t("fieldRental")}</span>
+                              <span className="font-medium text-[#32343C]">{formatPrice(detail.rentalAmount)} / {t("month")}</span>
                             </div>
-                          )}
-                          {remainder > 0 && (
+                            {(detail.dailyRate ?? 0) > 0 && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#545454]">{t("fieldDailyRate")}</span>
+                                <span className="font-medium text-[#32343C]">{formatPrice(detail.dailyRate ?? 0)} {t("perDay")}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Month/day breakdown */}
+                          <div className="flex flex-col gap-1.5 border-t border-[rgba(65,65,65,0.1)] py-3">
+                            {fullMonths > 0 && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#545454]">{fullMonths} {fullMonths === 1 ? t("month") : t("months")} × {formatPrice(detail.rentalAmount)}</span>
+                                <span className="font-medium text-[#32343C]">{formatPrice(fullCost)}</span>
+                              </div>
+                            )}
+                            {remainder > 0 && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#545454]">{remainder} {t("days")} × {formatPrice(detail.dailyRate ?? 0)}</span>
+                                <span className="font-medium text-[#32343C]">{formatPrice(partialCost)}</span>
+                              </div>
+                            )}
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-[#545454]">{remainder} {t("days")} × {formatPrice(detail.dailyRate ?? 0)}</span>
-                              <span className="font-medium text-[#32343C]">{formatPrice(partialCost)}</span>
+                              <span className="font-semibold text-[#32343C]">{t("fieldTotalRent")}</span>
+                              <span className="font-semibold text-[#32343C]">{formatPrice(baseTotal)}</span>
                             </div>
-                          )}
-                        </div>
-                        <div className="border-t border-[rgba(65,65,65,0.1)] pt-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-[#32343C]">{t("fieldTotalContract")}</span>
-                            <span className="text-base font-bold text-[#0245A5]">{formatPrice(total)}</span>
+                          </div>
+
+                          {/* Deductions */}
+                          <div className="flex flex-col gap-1.5 border-t border-[rgba(65,65,65,0.1)] py-3">
+                            {ownerContractFee > 0 && (
+                              <>
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-[#E35454]">{t("fieldOwnerContractFee", { rate: (ownerContractFeeRate * 100).toFixed(0) })}</span>
+                                  <span className="font-medium text-[#E35454]">−{formatPrice(ownerContractFee)}</span>
+                                </div>
+                                {vatOnOwnerFee > 0 && (
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-[#E35454]">{t("fieldOwnerContractFeeVat", { rate: (vatRate * 100).toFixed(0) })}</span>
+                                    <span className="font-medium text-[#E35454]">−{formatPrice(vatOnOwnerFee)}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#E35454]">{t("fieldPlatformFee", { rate: (platformFeeRate * 100).toFixed(0) })}</span>
+                              <span className="font-medium text-[#E35454]">−{formatPrice(totalPlatformFee)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#E35454]">{t("fieldVatOnPlatformFee", { rate: (vatRate * 100).toFixed(0) })}</span>
+                              <span className="font-medium text-[#E35454]">−{formatPrice(totalVatOnPlatform)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#E35454]">{t("fieldStripeFee")}</span>
+                              <span className="font-medium text-[#E35454]">−{formatPrice(totalStripeFee)}</span>
+                            </div>
+                          </div>
+
+                          {/* Net */}
+                          <div className="flex items-center justify-between border-t border-[rgba(65,65,65,0.1)] pt-3">
+                            <span className="text-sm font-bold text-[#32343C]">{t("fieldOwnerNet")}</span>
+                            <span className="text-base font-bold text-[#0245A5]">{formatPrice(ownerNet)}</span>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })()}
-                </Section>
+                      );
+                    })()}
+                    {activeTab === "history" && (
+                      <RentPaymentHistorySection bookingId={bookingId} role="owner" />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

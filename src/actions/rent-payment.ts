@@ -88,6 +88,9 @@ export async function createRentPaymentIntent(bookingId: string): Promise<{
     currency:    "thb",
     customer:    customerId,
     automatic_payment_methods: { enabled: true },
+    // Save the card to the customer after payment so it can be used for
+    // future off-session monthly rent charges
+    setup_future_usage: "off_session",
     description: `First month rent — booking ${bookingId}`,
     metadata:    { bookingId, type: "rent_first_month" },
   });
@@ -105,6 +108,56 @@ export async function createRentPaymentIntent(bookingId: string): Promise<{
     tenantContractFee:    booking.fees?.tenantContractFee    ?? 0,
     tenantContractFeeVat: booking.fees?.tenantContractFeeVat ?? 0,
     tenantTotalCharged:   booking.fees?.tenantTotalCharged   ?? booking.rentalAmount,
+  };
+}
+
+// ─── createOverduePaymentIntent ──────────────────────────────────────────────
+// Creates a PI for the tenant's current overdueAmount (rent ± late fee).
+// The card is already saved — charges off-session style via the locked PM.
+
+export async function createOverduePaymentIntent(bookingId: string): Promise<{
+  clientSecret:    string;
+  paymentIntentId: string;
+  overdueAmount:   number;
+  hasLateFee:      boolean;
+  lateFee:         number;
+}> {
+  const user = await requireSession();
+  await dbConnect();
+
+  if (!Types.ObjectId.isValid(bookingId)) throw new Error("Invalid booking.");
+
+  const booking = await RentBooking.findById(bookingId);
+  if (!booking) throw new Error("Booking not found.");
+  if (String(booking.tenantId) !== user.id) throw new Error("Forbidden.");
+  if (booking.status !== "active") throw new Error("Booking is not active.");
+  if (!booking.overdueAmount || booking.overdueAmount <= 0) throw new Error("No overdue balance.");
+
+  const overdueAmount = booking.overdueAmount;
+  const lateFeeRate   = booking.fees?.lateFeeRate ?? 0.15;
+  const lateFee       = booking.isRestricted ? Math.round(lateFeeRate * booking.rentalAmount) : 0;
+  const hasLateFee    = lateFee > 0;
+
+  const pi = await stripe.paymentIntents.create({
+    amount:      Math.round(overdueAmount * 100),
+    currency:    "thb",
+    customer:    booking.stripe.customerId,
+    automatic_payment_methods: { enabled: true },
+    description: `Overdue rent payment — booking ${bookingId}`,
+    metadata:    {
+      bookingId,
+      type:        "monthly_rent_overdue",
+      monthNumber: String(booking.rentMonthsPaid + 1),
+      hasLateFee:  String(hasLateFee),
+    },
+  });
+
+  return {
+    clientSecret:    pi.client_secret!,
+    paymentIntentId: pi.id,
+    overdueAmount,
+    hasLateFee,
+    lateFee,
   };
 }
 

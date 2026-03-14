@@ -7,6 +7,7 @@ import dbConnect from "@/lib/mongodb";
 import RentBooking from "@/models/RentBooking";
 import Property from "@/models/Property";
 import PlatformFees from "@/models/PlatformFees";
+import Transaction from "@/models/Transaction";
 import { createNotification } from "@/actions/notifications";
 import { NotificationType } from "@/types/notifications";
 
@@ -157,6 +158,7 @@ export async function createRentBooking(
     const platformFeeRate  = pf?.platformFeeRate          ?? 0.09;
     const stripeFeePercent = pf?.stripeFeePercent         ?? 0.034;
     const stripeFeeFixed   = pf?.stripeFeeFixed           ?? 10;
+    const lateFeeRate      = pf?.lateFeeRate              ?? 0.15;
 
     const totalContractValue  = (fullMonths * rentalAmount) + (remainderDays * dailyRate);
     const tenantContractFee   = tenantFeeEnabled ? Math.round(tenantFeeRate * totalContractValue) : 0;
@@ -210,6 +212,7 @@ export async function createRentBooking(
         vatRate,
         stripeFeePercent,
         stripeFeeFixed,
+        lateFeeRate,
       },
 
       status: "pending",
@@ -392,10 +395,18 @@ export interface RentBookingDetail {
     vatRate:                  number;
     stripeFeePercent:         number;
     stripeFeeFixed:           number;
+    lateFeeRate:              number;
   };
   status:          string;
   ownerNote:       string;
   createdAt:       string;
+  // Overdue / recurring state
+  overdueAmount:    number;
+  overdueMonths:    number;
+  isRestricted:     boolean;
+  lateFeePendingAt: string | null;
+  rentMonthsPaid:   number;
+  nextRentDueDate:  string | null;
 }
 
 export async function getRentBookingDetail(id: string): Promise<RentBookingDetail | null> {
@@ -473,10 +484,17 @@ export async function getRentBookingDetail(id: string): Promise<RentBookingDetai
       vatRate:                  doc.fees?.vatRate                  ?? 0.07,
       stripeFeePercent:         doc.fees?.stripeFeePercent         ?? 0.034,
       stripeFeeFixed:           doc.fees?.stripeFeeFixed           ?? 10,
+      lateFeeRate:              doc.fees?.lateFeeRate              ?? 0.15,
     },
     status:          doc.status,
     ownerNote:       doc.ownerNote ?? "",
     createdAt:       doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt),
+    overdueAmount:    doc.overdueAmount   ?? 0,
+    overdueMonths:    doc.overdueMonths   ?? 0,
+    isRestricted:     doc.isRestricted    ?? false,
+    lateFeePendingAt: doc.lateFeePendingAt ? new Date(doc.lateFeePendingAt).toISOString() : null,
+    rentMonthsPaid:   doc.rentMonthsPaid  ?? 0,
+    nextRentDueDate:  doc.nextRentDueDate ? new Date(doc.nextRentDueDate).toISOString() : null,
   };
 }
 
@@ -561,4 +579,67 @@ export async function cancelRentBooking(
     console.error("[cancelRentBooking]", err);
     return { success: false, error: "Something went wrong." };
   }
+}
+
+// ─── getRentPaymentHistory ────────────────────────────────────────────────────
+
+export interface RentPaymentEntry {
+  id:          string;
+  type:        string;
+  description: string;
+  amount:      number;
+  date:        string;
+  status:      string;
+  stripeRef:   string;
+}
+
+export async function getRentPaymentHistory(
+  bookingId: string,
+  role:       "tenant" | "owner",
+): Promise<RentPaymentEntry[]> {
+  const user = await requireSession();
+  await dbConnect();
+
+  if (!Types.ObjectId.isValid(bookingId)) return [];
+
+  // Verify caller is part of this booking
+  const booking = await RentBooking.findById(bookingId).lean();
+  if (!booking) return [];
+  if (String(booking.tenantId) !== user.id && String(booking.ownerId) !== user.id) return [];
+
+  const tenantId = String(booking.tenantId);
+
+  // For tenant: rent_payment + contract_fee + vat (userId=tenant) + late_fee (userId=null)
+  // For owner:  owner_payout only
+  const txs = await Transaction.find(
+    role === "tenant"
+      ? {
+          referenceId:   new Types.ObjectId(bookingId),
+          referenceType: "rent_booking",
+          status:        "completed",
+          $or: [
+            { type: { $in: ["rent_payment", "contract_fee", "vat"] }, userId: new Types.ObjectId(tenantId) },
+            { type: "late_fee" },
+          ],
+        }
+      : {
+          referenceId:   new Types.ObjectId(bookingId),
+          referenceType: "rent_booking",
+          type:          "owner_payout",
+          status:        "completed",
+        }
+  )
+    .sort({ createdAt: 1 })
+    .lean();
+
+  return txs.map((tx) => ({
+    id:          String(tx._id),
+    type:        tx.type,
+    // Strip "— booking XXXX" suffix that's appended in the webhook handler
+    description: tx.description.replace(/\s*—\s*booking\s+\S+$/i, "").trim(),
+    amount:      tx.amount,
+    date:        tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt),
+    status:      tx.status,
+    stripeRef:   tx.stripeRef,
+  }));
 }

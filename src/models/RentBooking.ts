@@ -18,6 +18,7 @@ export interface IBookingFees {
   vatRate:          number;
   stripeFeePercent: number;
   stripeFeeFixed:   number;
+  lateFeeRate:      number;   // 15% of monthly rent — platform revenue, applied after all retries
 }
 
 export interface IRentBooking extends Document {
@@ -51,9 +52,20 @@ export interface IRentBooking extends Document {
   contractMonths:  number;  // total billing cycles = fullMonths + (remainderDays > 0 ? 1 : 0)
   rentalAmount:    number;  // monthly rate from matched contract
   securityDeposit: number;
-  totalUpfront:    number;  // = rentalAmount (first month only — deposit is not charged)
+  totalUpfront:    number;  // rentalAmount + contractFee + VAT (first payment only)
   dailyRate:       number;  // rentalAmount / 30
   remainderDays:   number;  // stayDays % 30; 0 means no partial last month
+
+  // ── Recurring rent tracking (Phase 4) ─────────────────────────────────────
+  rentMonthsPaid:   number;        // incremented after each successful charge (starts at 1 after upfront)
+  nextRentDueDate:  Date | null;   // set after upfront payment; cleared when all months paid
+  autoCharge:       boolean;       // true if first month paid by card (off-session charge enabled)
+  overdueMonths:    number;        // how many months currently unpaid
+  overdueAmount:    number;        // total THB overdue
+  stripeRetryCount:          number;        // charge attempts made for current cycle (resets to 0 on success)
+  lateFeePendingAt:          Date | null;   // set after all retries exhausted; late fee applied when this passes (48h grace)
+  isRestricted:              boolean;       // true when late fee applied — blocks new bookings
+  totalPaymentFailureCycles: number;        // how many billing cycles have had all retries exhausted (ever)
 
   // ── Status lifecycle ───────────────────────────────────────────────────────
   status:
@@ -130,6 +142,16 @@ const RentBookingSchema = new Schema<IRentBooking>(
     dailyRate:       { type: Number, required: true, min: 0 },
     remainderDays:   { type: Number, required: true, min: 0, default: 0 },
 
+    rentMonthsPaid:   { type: Number,  default: 0     },
+    nextRentDueDate:  { type: Date,    default: null   },
+    autoCharge:       { type: Boolean, default: false  },
+    overdueMonths:    { type: Number,  default: 0      },
+    overdueAmount:    { type: Number,  default: 0      },
+    stripeRetryCount:          { type: Number,  default: 0     },
+    lateFeePendingAt:          { type: Date,    default: null  },
+    isRestricted:              { type: Boolean, default: false },
+    totalPaymentFailureCycles: { type: Number,  default: 0     },
+
     status: {
       type:    String,
       enum:    ["pending", "accepted", "rejected", "payment_pending", "active", "completed", "cancelled"],
@@ -165,6 +187,7 @@ const RentBookingSchema = new Schema<IRentBooking>(
       vatRate:                  { type: Number,  default: 0.07  },
       stripeFeePercent:         { type: Number,  default: 0.034 },
       stripeFeeFixed:           { type: Number,  default: 10    },
+      lateFeeRate:              { type: Number,  default: 0.15  },
     },
 
     stripe: {
@@ -178,10 +201,10 @@ const RentBookingSchema = new Schema<IRentBooking>(
   { timestamps: true }
 );
 
-// Indexes
 RentBookingSchema.index({ tenantId: 1, status: 1 });
 RentBookingSchema.index({ ownerId: 1, status: 1 });
 RentBookingSchema.index({ propertyId: 1, status: 1 });
+RentBookingSchema.index({ status: 1, autoCharge: 1, nextRentDueDate: 1 }); // cron query
 
 const RentBooking: Model<IRentBooking> =
   mongoose.models.RentBooking ??

@@ -11,4 +11,7 @@ export enum NotificationType {
   RENT_BOOKING_RECEIVED = "RENT_BOOKING_RECEIVED",
   RENT_BOOKING_ACCEPTED = "RENT_BOOKING_ACCEPTED",
   RENT_BOOKING_REJECTED = "RENT_BOOKING_REJECTED",
+  RENT_DUE_REMINDER     = "rent_due_reminder",
+  RENT_PAYMENT_RETRY    = "rent_payment_retry",
+  RENT_PAYMENT_FAILED   = "rent_payment_failed",
 }

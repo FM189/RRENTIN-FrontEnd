@@ -211,9 +211,28 @@ export default function RentBookingClient({ property, tenantContractFeeEnabled, 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  const addDays = (dateStr: string, days: number): string => {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split("T")[0];
+  };
+
   const set = (field: keyof BookingFormData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (field === "moveInDate") {
+      const minMoveOut = value ? addDays(value, 30) : "";
+      setForm((prev) => ({
+        ...prev,
+        moveInDate: value,
+        // Auto-set move-out to +30 days; reset if it's now before the minimum
+        moveOutDate: value
+          ? (!prev.moveOutDate || prev.moveOutDate < minMoveOut ? minMoveOut : prev.moveOutDate)
+          : "",
+      }));
+      setErrors((prev) => ({ ...prev, moveInDate: undefined, moveOutDate: undefined }));
+    } else {
+      setForm((prev) => ({ ...prev, [field]: value }));
+      if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
   const stayDays = useMemo(() => {
@@ -269,8 +288,13 @@ export default function RentBookingClient({ property, tenantContractFeeEnabled, 
     if (!form.moveOutDate)        newErrors.moveOutDate  = required;
     if (!form.arrivalTime)        newErrors.arrivalTime  = required;
 
-    if (form.moveInDate && form.moveOutDate && form.moveOutDate <= form.moveInDate) {
-      newErrors.moveOutDate = t("moveOutAfterMoveIn");
+    if (form.moveInDate && form.moveOutDate) {
+      const diffDays = Math.round(
+        (new Date(form.moveOutDate).getTime() - new Date(form.moveInDate).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (diffDays < 30) {
+        newErrors.moveOutDate = t("moveOutMinimum30Days");
+      }
     }
 
     setErrors(newErrors);
@@ -714,7 +738,7 @@ export default function RentBookingClient({ property, tenantContractFeeEnabled, 
                       type="date"
                       value={form.moveOutDate}
                       onChange={(e) => set("moveOutDate", e.target.value)}
-                      min={form.moveInDate || undefined}
+                      min={form.moveInDate ? addDays(form.moveInDate, 30) : undefined}
                       className="w-full bg-transparent text-sm text-[#32343C] focus:outline-none"
                     />
                   </div>
