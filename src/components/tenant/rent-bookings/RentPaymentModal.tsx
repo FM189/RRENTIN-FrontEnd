@@ -234,6 +234,12 @@ export default function RentPaymentModal({ bookingId, detail, onClose, onSuccess
                   <span className="text-[#545454]">{t("firstMonthRent")}</span>
                   <span className="font-semibold text-[#32343C]">{formatPrice(detail.rentalAmount)}</span>
                 </div>
+                {(detail.customFeesSnapshot ?? []).map((fee, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-[#545454]">{fee.name}</span>
+                    <span className="font-semibold text-[#32343C]">{formatPrice(fee.amount)}</span>
+                  </div>
+                ))}
                 {tenantContractFee > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#545454]">{t("contractFee")}</span>

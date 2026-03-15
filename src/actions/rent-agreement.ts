@@ -27,12 +27,10 @@ function getClientIp(): string {
 // ─── signAgreementAsOwner ─────────────────────────────────────────────────────
 
 export interface OwnerAgreementInput {
-  bookingId:      string;
-  ownerAddress:   string;
-  internetCharge: number;
-  parkingFee:     number;
-  includedItems:  string;
-  signatureData:  string;  // base64 PNG data URL
+  bookingId:     string;
+  ownerAddress:  string;
+  includedItems: string;
+  signatureData: string;  // base64 PNG data URL
 }
 
 export async function signAgreementAsOwner(
@@ -93,8 +91,7 @@ export async function signAgreementAsOwner(
         moveInDate:           booking.moveInDate,
         moveOutDate:          booking.moveOutDate,
         paymentDueDay,
-        internetCharge:       input.internetCharge,
-        parkingFee:           input.parkingFee,
+        customFees:           (booking.customFeesSnapshot ?? []) as { name: string; amount: number }[],
         includedItems:        input.includedItems,
       },
       token,
@@ -105,8 +102,6 @@ export async function signAgreementAsOwner(
       "agreement.pdfUrl":              pdfUrl,
       "agreement.ownerSignedAt":       new Date(signedAt),
       "agreement.ownerAddress":        input.ownerAddress,
-      "agreement.internetCharge":      input.internetCharge,
-      "agreement.parkingFee":          input.parkingFee,
       "agreement.includedItems":       input.includedItems,
       "agreement.ownerSignatureData":  input.signatureData,
     });
@@ -182,8 +177,7 @@ export async function previewAgreementForOwner(
         moveInDate:           booking.moveInDate,
         moveOutDate:          booking.moveOutDate,
         paymentDueDay,
-        internetCharge:       input.internetCharge,
-        parkingFee:           input.parkingFee,
+        customFees:           (booking.customFeesSnapshot ?? []) as { name: string; amount: number }[],
         includedItems:        input.includedItems,
         preview:              true,
       },
@@ -257,8 +251,7 @@ export async function signAgreementAsTenant(
         moveInDate:           booking.moveInDate,
         moveOutDate:          booking.moveOutDate,
         paymentDueDay,
-        internetCharge:       booking.agreement?.internetCharge ?? 0,
-        parkingFee:           booking.agreement?.parkingFee ?? 0,
+        customFees:           (booking.customFeesSnapshot ?? []) as { name: string; amount: number }[],
         includedItems:        booking.agreement?.includedItems ?? "",
       },
       token,

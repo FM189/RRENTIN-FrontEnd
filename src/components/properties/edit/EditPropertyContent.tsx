@@ -80,6 +80,7 @@ export default function EditPropertyContent({ property }: EditPropertyContentPro
     contracts:           property.contracts.length > 0
       ? property.contracts
       : [{ months: 1, rentPrice: "", securityDeposit: "" }],
+    customFees:          property.customFees ?? [],
   });
 
   // Track existing S3 URLs and new File objects separately

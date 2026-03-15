@@ -15,12 +15,10 @@ interface Props {
 export default function OwnerAgreementModal({ detail, onSigned, onClose }: Props) {
   const t = useTranslations("Dashboard.ownerAgreement");
 
-  const [step,           setStep]           = useState<1 | 2>(1);
-  const [pdfOpened,      setPdfOpened]      = useState(false);
-  const [ownerAddress,   setOwnerAddress]   = useState(detail.agreement?.ownerAddress ?? "");
-  const [internetCharge, setInternetCharge] = useState(detail.agreement?.internetCharge ?? 0);
-  const [parkingFee,     setParkingFee]     = useState(detail.agreement?.parkingFee ?? 0);
-  const [includedItems,  setIncludedItems]  = useState(detail.agreement?.includedItems ?? "");
+  const [step,          setStep]          = useState<1 | 2>(1);
+  const [pdfOpened,     setPdfOpened]     = useState(false);
+  const [ownerAddress,  setOwnerAddress]  = useState(detail.agreement?.ownerAddress ?? "");
+  const [includedItems, setIncludedItems] = useState(detail.agreement?.includedItems ?? "");
   const [previewUrl,     setPreviewUrl]     = useState<string | null>(null);
   const [previewing,     setPreviewing]     = useState(false);
   const [signatureData,  setSignatureData]  = useState<string | null>(null);
@@ -37,11 +35,9 @@ export default function OwnerAgreementModal({ detail, onSigned, onClose }: Props
     setError(null);
     try {
       const res = await previewAgreementForOwner({
-        bookingId:      detail.id,
-        ownerAddress:   ownerAddress.trim(),
-        internetCharge: internetCharge || 0,
-        parkingFee:     parkingFee || 0,
-        includedItems:  includedItems.trim(),
+        bookingId:     detail.id,
+        ownerAddress:  ownerAddress.trim(),
+        includedItems: includedItems.trim(),
       });
       if (!res.success) {
         setError(res.error ?? t("errorGeneric"));
@@ -60,12 +56,10 @@ export default function OwnerAgreementModal({ detail, onSigned, onClose }: Props
     setError(null);
     try {
       const res = await signAgreementAsOwner({
-        bookingId:      detail.id,
-        ownerAddress:   ownerAddress.trim(),
-        internetCharge: internetCharge || 0,
-        parkingFee:     parkingFee || 0,
-        includedItems:  includedItems.trim(),
-        signatureData:  signatureData!,
+        bookingId:     detail.id,
+        ownerAddress:  ownerAddress.trim(),
+        includedItems: includedItems.trim(),
+        signatureData: signatureData!,
       });
       if (!res.success) {
         setError(res.error ?? t("errorGeneric"));
@@ -126,30 +120,19 @@ export default function OwnerAgreementModal({ detail, onSigned, onClose }: Props
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {detail.customFeesSnapshot && detail.customFeesSnapshot.length > 0 && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-[#32343C]">{t("internetCharge")}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={internetCharge || ""}
-                      onChange={(e) => setInternetCharge(Number(e.target.value))}
-                      placeholder="0"
-                      className="h-11 w-full rounded-[6px] border border-[rgba(102,102,102,0.35)] px-3 text-sm text-[#32343C] focus:border-primary focus:outline-none"
-                    />
+                    <label className="text-sm font-medium text-[#32343C]">{t("monthlyFees")}</label>
+                    <div className="rounded-[6px] border border-[rgba(102,102,102,0.2)] bg-[#F7FAFE] px-3 py-2.5 flex flex-col gap-1">
+                      {detail.customFeesSnapshot.map((fee, i) => (
+                        <div key={i} className="flex justify-between text-sm text-[#32343C]">
+                          <span>{fee.name}</span>
+                          <span className="font-medium">THB {fee.amount.toLocaleString()}/mo</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium text-[#32343C]">{t("parkingFee")}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={parkingFee || ""}
-                      onChange={(e) => setParkingFee(Number(e.target.value))}
-                      placeholder="0"
-                      className="h-11 w-full rounded-[6px] border border-[rgba(102,102,102,0.35)] px-3 text-sm text-[#32343C] focus:border-primary focus:outline-none"
-                    />
-                  </div>
-                </div>
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-[#32343C]">{t("includedItems")}</label>

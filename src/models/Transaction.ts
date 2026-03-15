@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 export type TransactionType =
   | "visit_payment"    // tenant pays visit fee
   | "rent_payment"     // tenant pays rent (first month or recurring)
+  | "monthly_fee"      // tenant pays custom property fees (pass-through to owner)
   | "agent_payment"    // owner pays agent for service
   | "contract_fee"     // one-time contract fee charged to tenant or deducted from owner
   | "vat"              // VAT on contract fee or platform fee
@@ -42,7 +43,7 @@ const TransactionSchema = new Schema<ITransaction>(
   {
     type: {
       type:     String,
-      enum:     ["visit_payment", "rent_payment", "agent_payment", "contract_fee", "vat", "platform_fee", "stripe_fee", "owner_payout", "late_fee", "damage_charge", "escrow_hold", "escrow_release", "refund", "withdrawal"],
+      enum:     ["visit_payment", "rent_payment", "monthly_fee", "agent_payment", "contract_fee", "vat", "platform_fee", "stripe_fee", "owner_payout", "late_fee", "damage_charge", "escrow_hold", "escrow_release", "refund", "withdrawal"],
       required: true,
       index:    true,
     },

@@ -26,7 +26,20 @@ export default function Step5Pricing({
 }: Step5Props) {
   const t = useTranslations("Dashboard.properties.addPropertyPage");
 
-  const contracts = formData.contracts || [];
+  const contracts   = formData.contracts   || [];
+  const customFees  = formData.customFees  || [];
+
+  const updateCustomFee = (index: number, updates: Partial<{ name: string; amount: string }>) => {
+    onFormDataChange({ customFees: customFees.map((f, i) => i === index ? { ...f, ...updates } : f) });
+  };
+
+  const addCustomFee = () => {
+    onFormDataChange({ customFees: [...customFees, { name: "", amount: "" }] });
+  };
+
+  const removeCustomFee = (index: number) => {
+    onFormDataChange({ customFees: customFees.filter((_, i) => i !== index) });
+  };
 
   const updateContract = (index: number, updates: Partial<ContractEntry>) => {
     const updated = contracts.map((c, i) =>
@@ -243,6 +256,61 @@ export default function Step5Pricing({
             </div>
           );
         })}
+        {/* Custom Fees */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm lg:text-base text-text-muted font-normal">{t("step5.customFees")}</p>
+            <button
+              type="button"
+              onClick={addCustomFee}
+              className="px-4 py-1.5 text-sm font-medium rounded-full bg-primary text-white hover:bg-primary-hover transition-colors"
+            >
+              {t("step5.addCustomFee")}
+            </button>
+          </div>
+          {customFees.map((fee, idx) => (
+            <div key={idx} className="flex flex-col lg:flex-row lg:items-end gap-3 p-4 rounded-lg border border-[rgba(65,65,65,0.12)] bg-[#FAFAFA]">
+              {/* Fee name */}
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="text-xs text-text-muted font-normal">{t("step5.customFeeName")}</label>
+                <input
+                  type="text"
+                  value={fee.name}
+                  onChange={(e) => updateCustomFee(idx, { name: e.target.value })}
+                  placeholder={t("step5.customFeeName")}
+                  className="w-full h-[43px] px-4 border border-[rgba(65,65,65,0.16)] rounded-lg text-sm font-medium text-text bg-white shadow-[0px_0px_10px_rgba(0,0,0,0.07)] focus:outline-none focus:border-primary"
+                />
+              </div>
+              {/* Fee amount */}
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="text-xs text-text-muted font-normal">{t("step5.thbPerMonth")}</label>
+                <div className="flex">
+                  <input
+                    type="number"
+                    value={fee.amount}
+                    onChange={(e) => updateCustomFee(idx, { amount: e.target.value })}
+                    placeholder="0"
+                    className="w-full h-[43px] px-4 border border-[rgba(65,65,65,0.16)] rounded-l-lg text-sm font-medium text-text bg-white shadow-[0px_0px_10px_rgba(0,0,0,0.07)] focus:outline-none focus:border-primary"
+                  />
+                  <span className="h-[43px] px-3 flex items-center bg-[#F0F0F0] border border-l-0 border-[rgba(65,65,65,0.16)] rounded-r-lg text-sm font-medium text-text-muted shrink-0">
+                    THB
+                  </span>
+                </div>
+              </div>
+              {/* Remove */}
+              <button
+                type="button"
+                onClick={() => removeCustomFee(idx)}
+                className="lg:mb-0.5 w-full lg:w-8 h-9 lg:h-8 rounded-lg lg:rounded-full border border-[rgba(65,65,65,0.16)] lg:border-0 lg:bg-primary flex items-center justify-center gap-2 text-sm text-[#E35454] lg:text-white hover:bg-red-50 lg:hover:bg-primary-hover transition-colors shrink-0"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                <span className="lg:hidden text-xs font-medium">{t("step5.removeFee")}</span>
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Error */}

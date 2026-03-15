@@ -504,6 +504,7 @@ export interface TenantBookingProperty {
     rentPrice: string;
     securityDeposit: string;
   }>;
+  customFees: Array<{ name: string; amount: number }>;
 }
 
 export async function getTenantBookingProperty(id: string): Promise<TenantBookingProperty | null> {
@@ -516,7 +517,7 @@ export async function getTenantBookingProperty(id: string): Promise<TenantBookin
       _id: new Types.ObjectId(id),
       approvalStatus: "approved",
     })
-      .select("propertyTitle propertyType address province photos bedrooms bathrooms unitArea unitAreaUnit contracts")
+      .select("propertyTitle propertyType address province photos bedrooms bathrooms unitArea unitAreaUnit contracts customFees")
       .lean();
 
     if (!doc) return null;
@@ -536,6 +537,10 @@ export async function getTenantBookingProperty(id: string): Promise<TenantBookin
         months:          Number(c.months),
         rentPrice:       String(c.rentPrice),
         securityDeposit: String(c.securityDeposit),
+      })),
+      customFees: ((doc as unknown as { customFees?: Array<{ name: string; amount: number }> }).customFees ?? []).map((f) => ({
+        name:   String(f.name),
+        amount: Number(f.amount),
       })),
     };
   } catch {

@@ -153,7 +153,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
           <PropertyInfo
             title={property.title}
             address={property.address}
-            price={property.priceNum}
+            price={firstContract ? (parseFloat(String(firstContract.rentPrice).replace(/,/g, "")) || 0) : property.priceNum}
             features={features}
           />
         </div>

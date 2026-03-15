@@ -202,11 +202,15 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
                   const fullCost        = fullMonths * detail.rentalAmount;
                   const partialCost     = Math.round(remainder * (detail.dailyRate ?? 0));
                   const totalRentAmount = fullCost + partialCost;
+                  const billingCycles   = fullMonths + (remainder > 0 ? 1 : 0);
+                  const monthlyFees     = detail.monthlyFees ?? 0;
+                  const customFees      = detail.customFeesSnapshot ?? [];
+                  const totalMonthlyFees = monthlyFees * billingCycles;
                   const contractFee     = detail.fees?.tenantContractFee    ?? 0;
                   const contractFeeVat  = detail.fees?.tenantContractFeeVat ?? 0;
                   const contractFeeRate = detail.fees?.tenantContractFeeRate ?? 0;
                   const vatRate         = detail.fees?.vatRate               ?? 0.07;
-                  const totalContractValue = totalRentAmount + contractFee + contractFeeVat;
+                  const totalContractValue = totalRentAmount + totalMonthlyFees + contractFee + contractFeeVat;
                   const chargedInAdvance   = detail.fees?.tenantTotalCharged || detail.totalUpfront;
                   return (
                     <div className="rounded-[6px] border border-[rgba(102,102,102,0.12)] p-4">
@@ -222,6 +226,12 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
                               <span className="font-medium text-[#32343C]">{formatPrice(detail.dailyRate ?? 0)} {t("perDay")}</span>
                             </div>
                           )}
+                          {customFees.map((fee, i) => (
+                            <div key={i} className="flex items-center justify-between text-xs">
+                              <span className="text-[#545454]">{fee.name}</span>
+                              <span className="font-medium text-[#32343C]">{formatPrice(fee.amount)} / {t("month")}</span>
+                            </div>
+                          ))}
                         </div>
                         <div className="flex flex-col gap-1.5 border-t border-[rgba(65,65,65,0.1)] py-3">
                           {fullMonths > 0 && (
@@ -242,6 +252,12 @@ export default function TenantRentBookingDetailModal({ bookingId, onClose, onRef
                             <span className="text-[#545454]">{t("fieldTotalRentAmount")}</span>
                             <span className="font-medium text-[#32343C]">{formatPrice(totalRentAmount)}</span>
                           </div>
+                          {totalMonthlyFees > 0 && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-[#545454]">{t("fieldMonthlyFees")} ({billingCycles}×)</span>
+                              <span className="font-medium text-[#32343C]">{formatPrice(totalMonthlyFees)}</span>
+                            </div>
+                          )}
                           {contractFee > 0 && (
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-[#545454]">{t("fieldContractFee")} ({(contractFeeRate * 100).toFixed(0)}%)</span>

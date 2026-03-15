@@ -95,6 +95,7 @@ export async function createRentBooking(
       owner: Types.ObjectId;
       propertyTitle?: string;
       contracts?: { months: number; rentPrice: string; securityDeposit: string }[];
+      customFees?:  { name: string; amount: number }[];
     } | null;
 
     if (!property) {
@@ -163,10 +164,15 @@ export async function createRentBooking(
     const totalContractValue  = (fullMonths * rentalAmount) + (remainderDays * dailyRate);
     const tenantContractFee   = tenantFeeEnabled ? Math.round(tenantFeeRate * totalContractValue) : 0;
     const tenantContractFeeVat = tenantFeeEnabled ? Math.round(vatRate * tenantContractFee) : 0;
-    const tenantTotalCharged  = rentalAmount + tenantContractFee + tenantContractFeeVat;
     const ownerContractFee    = ownerFeeEnabled  ? Math.round(ownerFeeRate  * totalContractValue) : 0;
+    const ownerContractFeeVat = ownerContractFee > 0 ? Math.round(vatRate * ownerContractFee) : 0;
 
-    const totalUpfront = tenantTotalCharged; // first month + contract fee + VAT; deposit is not charged
+    // ── Custom property fees (internet, parking, etc.) ──
+    const customFeesSnapshot = (property.customFees ?? []).filter((f) => f.name && f.amount > 0);
+    const monthlyFees        = customFeesSnapshot.reduce((sum, f) => sum + f.amount, 0);
+
+    const tenantTotalCharged = rentalAmount + monthlyFees + tenantContractFee + tenantContractFeeVat;
+    const totalUpfront = tenantTotalCharged; // first month + monthly fees + contract fee + VAT; deposit not charged
 
     // ── Save booking ──
     const booking = await RentBooking.create({
@@ -192,12 +198,14 @@ export async function createRentBooking(
       visaType:        input.visaType,
       specialRequests: input.specialRequests?.trim() ?? "",
 
-      contractMonths:  billingCycles,
+      contractMonths:     billingCycles,
       rentalAmount,
       securityDeposit,
       totalUpfront,
       dailyRate,
       remainderDays,
+      customFeesSnapshot,
+      monthlyFees,
 
       fees: {
         tenantContractFeeEnabled: tenantFeeEnabled,
@@ -208,6 +216,7 @@ export async function createRentBooking(
         ownerContractFeeEnabled:  ownerFeeEnabled,
         ownerContractFeeRate:     ownerFeeRate,
         ownerContractFee,
+        ownerContractFeeVat,
         platformFeeRate,
         vatRate,
         stripeFeePercent,
@@ -376,12 +385,14 @@ export interface RentBookingDetail {
   primaryReason:   string;
   visaType:        string;
   specialRequests: string;
-  contractMonths:  number;
-  rentalAmount:    number;
-  securityDeposit: number;
-  totalUpfront:    number;
-  dailyRate:       number;
-  remainderDays:   number;
+  contractMonths:     number;
+  rentalAmount:       number;
+  securityDeposit:    number;
+  totalUpfront:       number;
+  dailyRate:          number;
+  remainderDays:      number;
+  customFeesSnapshot: { name: string; amount: number }[];
+  monthlyFees:        number;
   fees: {
     tenantContractFeeEnabled: boolean;
     tenantContractFeeRate:    number;
@@ -391,6 +402,7 @@ export interface RentBookingDetail {
     ownerContractFeeEnabled:  boolean;
     ownerContractFeeRate:     number;
     ownerContractFee:         number;
+    ownerContractFeeVat:      number;
     platformFeeRate:          number;
     vatRate:                  number;
     stripeFeePercent:         number;
@@ -469,8 +481,10 @@ export async function getRentBookingDetail(id: string): Promise<RentBookingDetai
     rentalAmount:    doc.rentalAmount,
     securityDeposit: doc.securityDeposit,
     totalUpfront:    doc.totalUpfront,
-    dailyRate:       doc.dailyRate,
-    remainderDays:   doc.remainderDays,
+    dailyRate:          doc.dailyRate,
+    remainderDays:      doc.remainderDays,
+    customFeesSnapshot: (doc.customFeesSnapshot ?? []).map((f) => ({ name: String(f.name), amount: Number(f.amount) })),
+    monthlyFees:        doc.monthlyFees ?? 0,
     fees: {
       tenantContractFeeEnabled: doc.fees?.tenantContractFeeEnabled ?? true,
       tenantContractFeeRate:    doc.fees?.tenantContractFeeRate    ?? 0.05,
@@ -480,6 +494,7 @@ export async function getRentBookingDetail(id: string): Promise<RentBookingDetai
       ownerContractFeeEnabled:  doc.fees?.ownerContractFeeEnabled  ?? true,
       ownerContractFeeRate:     doc.fees?.ownerContractFeeRate     ?? 0.05,
       ownerContractFee:         doc.fees?.ownerContractFee         ?? 0,
+      ownerContractFeeVat:      doc.fees?.ownerContractFeeVat      ?? 0,
       platformFeeRate:          doc.fees?.platformFeeRate          ?? 0.09,
       vatRate:                  doc.fees?.vatRate                  ?? 0.07,
       stripeFeePercent:         doc.fees?.stripeFeePercent         ?? 0.034,
@@ -584,13 +599,14 @@ export async function cancelRentBooking(
 // ─── getRentPaymentHistory ────────────────────────────────────────────────────
 
 export interface RentPaymentEntry {
-  id:          string;
-  type:        string;
-  description: string;
-  amount:      number;
-  date:        string;
-  status:      string;
-  stripeRef:   string;
+  id:           string;
+  type:         string;
+  description:  string;
+  amount:       number;
+  date:         string;
+  status:       string;
+  stripeRef:    string;
+  isDeduction?: boolean; // owner view: true for deduction lines (not owner_payout)
 }
 
 export async function getRentPaymentHistory(
@@ -608,9 +624,10 @@ export async function getRentPaymentHistory(
   if (String(booking.tenantId) !== user.id && String(booking.ownerId) !== user.id) return [];
 
   const tenantId = String(booking.tenantId);
+  const ownerId  = String(booking.ownerId);
 
-  // For tenant: rent_payment + contract_fee + vat (userId=tenant) + late_fee (userId=null)
-  // For owner:  owner_payout only
+  // For tenant: rent_payment + monthly_fee + contract_fee + vat (userId=tenant) + late_fee
+  // For owner:  owner_payout + all deduction types so the owner can see a full breakdown
   const txs = await Transaction.find(
     role === "tenant"
       ? {
@@ -618,15 +635,22 @@ export async function getRentPaymentHistory(
           referenceType: "rent_booking",
           status:        "completed",
           $or: [
-            { type: { $in: ["rent_payment", "contract_fee", "vat"] }, userId: new Types.ObjectId(tenantId) },
+            { type: { $in: ["rent_payment", "monthly_fee", "contract_fee", "vat"] }, userId: new Types.ObjectId(tenantId) },
             { type: "late_fee" },
           ],
         }
       : {
           referenceId:   new Types.ObjectId(bookingId),
           referenceType: "rent_booking",
-          type:          "owner_payout",
           status:        "completed",
+          $or: [
+            { type: "owner_payout", userId: new Types.ObjectId(ownerId) },
+            { type: "platform_fee", userId: null },
+            { type: "vat",          userId: null },                          // VAT on platform fee
+            { type: "stripe_fee",   userId: null },
+            { type: "contract_fee", userId: new Types.ObjectId(ownerId) },   // owner contract fee deducted
+            { type: "vat",          userId: new Types.ObjectId(ownerId) },   // VAT on owner contract fee
+          ],
         }
   )
     .sort({ createdAt: 1 })
@@ -641,5 +665,6 @@ export async function getRentPaymentHistory(
     date:        tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt),
     status:      tx.status,
     stripeRef:   tx.stripeRef,
+    isDeduction: role === "owner" && tx.type !== "owner_payout",
   }));
 }

@@ -12,6 +12,7 @@ export interface IBookingFees {
   ownerContractFeeEnabled: boolean;
   ownerContractFeeRate:    number;   // snapshot from PlatformFees
   ownerContractFee:        number;   // calculated amount (0 if disabled)
+  ownerContractFeeVat:     number;   // VAT on owner contract fee (0 if disabled)
 
   // Snapshotted rates for recurring payout calculations
   platformFeeRate:  number;
@@ -49,12 +50,14 @@ export interface IRentBooking extends Document {
   specialRequests: string;
 
   // ── Contract snapshot (locked at booking time) ─────────────────────────────
-  contractMonths:  number;  // total billing cycles = fullMonths + (remainderDays > 0 ? 1 : 0)
-  rentalAmount:    number;  // monthly rate from matched contract
-  securityDeposit: number;
-  totalUpfront:    number;  // rentalAmount + contractFee + VAT (first payment only)
-  dailyRate:       number;  // rentalAmount / 30
-  remainderDays:   number;  // stayDays % 30; 0 means no partial last month
+  contractMonths:       number;  // total billing cycles = fullMonths + (remainderDays > 0 ? 1 : 0)
+  rentalAmount:         number;  // monthly rate from matched contract
+  securityDeposit:      number;
+  totalUpfront:         number;  // rentalAmount + monthlyFees + contractFee + VAT (first payment only)
+  dailyRate:            number;  // rentalAmount / 30
+  remainderDays:        number;  // stayDays % 30; 0 means no partial last month
+  customFeesSnapshot:   { name: string; amount: number }[];  // property customFees at booking time
+  monthlyFees:          number;  // sum of customFeesSnapshot amounts — added to every charge
 
   // ── Recurring rent tracking (Phase 4) ─────────────────────────────────────
   rentMonthsPaid:   number;        // incremented after each successful charge (starts at 1 after upfront)
@@ -141,6 +144,8 @@ const RentBookingSchema = new Schema<IRentBooking>(
     totalUpfront:    { type: Number, required: true, min: 0 },
     dailyRate:       { type: Number, required: true, min: 0 },
     remainderDays:   { type: Number, required: true, min: 0, default: 0 },
+    customFeesSnapshot: { type: [{ name: String, amount: Number }], default: [] },
+    monthlyFees:        { type: Number, default: 0 },
 
     rentMonthsPaid:   { type: Number,  default: 0     },
     nextRentDueDate:  { type: Date,    default: null   },
@@ -183,6 +188,7 @@ const RentBookingSchema = new Schema<IRentBooking>(
       ownerContractFeeEnabled:  { type: Boolean, default: true  },
       ownerContractFeeRate:     { type: Number,  default: 0.05  },
       ownerContractFee:         { type: Number,  default: 0     },
+      ownerContractFeeVat:      { type: Number,  default: 0     },
       platformFeeRate:          { type: Number,  default: 0.09  },
       vatRate:                  { type: Number,  default: 0.07  },
       stripeFeePercent:         { type: Number,  default: 0.034 },

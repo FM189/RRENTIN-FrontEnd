@@ -77,23 +77,26 @@ export async function getOwnerProperties({
   const [total, docs] = await Promise.all([
     Property.countDocuments(match),
     Property.find(match)
-      .select("propertyTitle propertyType address propertyPrice photos propertyStatus approvalStatus")
+      .select("propertyTitle propertyType address propertyPrice contracts photos propertyStatus approvalStatus")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
   ]);
 
-  const properties: PropertyListItem[] = docs.map((doc) => ({
-    id: String(doc._id),
-    title: doc.propertyTitle,
-    type: doc.propertyType,
-    address: doc.address,
-    price: doc.propertyPrice,
-    image: doc.photos?.[0] ?? "",
-    propertyStatus: doc.propertyStatus as "available" | "rented" | "unavailable",
-    approvalStatus: doc.approvalStatus as "pending" | "approved" | "rejected",
-  }));
+  const properties: PropertyListItem[] = docs.map((doc) => {
+    const firstContract = (doc.contracts as Array<{ rentPrice: string }> | undefined)?.[0];
+    return {
+      id: String(doc._id),
+      title: doc.propertyTitle,
+      type: doc.propertyType,
+      address: doc.address,
+      price: firstContract?.rentPrice ?? doc.propertyPrice,
+      image: doc.photos?.[0] ?? "",
+      propertyStatus: doc.propertyStatus as "available" | "rented" | "unavailable",
+      approvalStatus: doc.approvalStatus as "pending" | "approved" | "rejected",
+    };
+  });
 
   return {
     properties,
@@ -146,7 +149,7 @@ export async function getOwnerPropertiesMap({
   if (type) match.propertyType = { $regex: `^${type}$`, $options: "i" };
 
   const docs = await Property.find(match)
-    .select("propertyTitle propertyPrice photos propertyStatus address location")
+    .select("propertyTitle propertyPrice contracts photos propertyStatus address location")
     .limit(500)
     .lean();
 
@@ -155,15 +158,18 @@ export async function getOwnerPropertiesMap({
       const [lng, lat] = doc.location?.coordinates ?? [0, 0];
       return lng !== 0 || lat !== 0;
     })
-    .map((doc) => ({
-      id: String(doc._id),
-      title: doc.propertyTitle,
-      price: doc.propertyPrice,
-      address: doc.address,
-      image: doc.photos?.[0] ?? "",
-      propertyStatus: doc.propertyStatus as "available" | "rented" | "unavailable",
-      coordinates: doc.location.coordinates as [number, number],
-    }));
+    .map((doc) => {
+      const firstContract = (doc.contracts as Array<{ rentPrice: string }> | undefined)?.[0];
+      return {
+        id: String(doc._id),
+        title: doc.propertyTitle,
+        price: firstContract?.rentPrice ?? doc.propertyPrice,
+        address: doc.address,
+        image: doc.photos?.[0] ?? "",
+        propertyStatus: doc.propertyStatus as "available" | "rented" | "unavailable",
+        coordinates: doc.location.coordinates as [number, number],
+      };
+    });
 }
 
 // ─── Types for property edit ──────────────────────────────────────────────────
@@ -219,6 +225,7 @@ export interface PropertyForEdit {
   visitRequestPrice: string;
   propertyPrice: string;
   contracts: Array<{ months: number; rentPrice: string; securityDeposit: string }>;
+  customFees: Array<{ name: string; amount: string }>;
 }
 
 // ─── Get full property data for the edit form ─────────────────────────────────
@@ -283,6 +290,7 @@ export async function getPropertyForEdit(id: string): Promise<PropertyForEdit | 
     visitRequestPrice:   p.visitRequestPrice ?? "",
     propertyPrice:       p.propertyPrice ?? "",
     contracts:           (p.contracts ?? []) as Array<{ months: number; rentPrice: string; securityDeposit: string }>,
+    customFees:          (p.customFees ?? []).map((f) => ({ name: String(f.name ?? ""), amount: String(f.amount ?? 0) })),
   };
 }
 

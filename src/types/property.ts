@@ -100,6 +100,7 @@ export interface AddPropertyData {
   visitRequestPrice: string;
   propertyPrice: string;
   contracts: ContractEntry[];
+  customFees: { name: string; amount: string }[];
 }
 
 export const INITIAL_ADD_PROPERTY_DATA: AddPropertyData = {
@@ -156,4 +157,5 @@ export const INITIAL_ADD_PROPERTY_DATA: AddPropertyData = {
   visitRequestPrice: "",
   propertyPrice: "",
   contracts: [{ months: 1, rentPrice: "", securityDeposit: "" }],
+  customFees: [],
 };

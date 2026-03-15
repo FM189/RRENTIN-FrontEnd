@@ -40,11 +40,12 @@ export async function handleRentOverdueManualSucceeded(pi: Stripe.PaymentIntent)
 
   // All fees calculated on base rent only — late fee is platform profit, invisible to owner
   const baseRent         = booking.rentalAmount;
+  const monthlyFees      = booking.monthlyFees ?? 0;
   const lateFee          = hasLateFee ? Math.round(lateFeeRate * baseRent) : 0;
   const platformFee      = Math.round(platformFeeRate  * baseRent);
   const vatOnPlatformFee = Math.round(vatRate          * platformFee);
   const stripeFee        = Math.round((stripeFeePercent * baseRent) + stripeFeeFixed);
-  const ownerNet         = baseRent - platformFee - vatOnPlatformFee - stripeFee;
+  const ownerNet         = baseRent + monthlyFees - platformFee - vatOnPlatformFee - stripeFee;
 
   // ── Advance due date ────────────────────────────────────────────────────────
   const newRentMonthsPaid = monthNumber;

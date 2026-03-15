@@ -222,92 +222,134 @@ export default function OwnerRentBookingDetailModal({ bookingId, onClose, onRefr
                     {activeTab === "price" && (() => {
                       const fullMonths           = Math.floor(detail.stayDays / 30);
                       const remainder            = detail.remainderDays ?? 0;
+                      const billingCycles        = fullMonths + (remainder > 0 ? 1 : 0);
                       const fullCost             = fullMonths * detail.rentalAmount;
                       const partialCost          = Math.round(remainder * (detail.dailyRate ?? 0));
                       const baseTotal            = fullCost + partialCost;
+                      const monthlyFees          = detail.monthlyFees ?? 0;
+                      const customFees           = detail.customFeesSnapshot ?? [];
+                      const totalMonthlyFees     = monthlyFees * billingCycles;
+                      const grossTotal           = baseTotal + totalMonthlyFees;
                       const ownerContractFee     = detail.fees?.ownerContractFee     ?? 0;
+                      const ownerContractFeeVat  = detail.fees?.ownerContractFeeVat  ?? 0;
                       const ownerContractFeeRate = detail.fees?.ownerContractFeeRate  ?? 0;
                       const platformFeeRate      = detail.fees?.platformFeeRate       ?? 0.09;
                       const vatRate              = detail.fees?.vatRate               ?? 0.07;
                       const stripeFeePercent     = detail.fees?.stripeFeePercent      ?? 0.034;
                       const stripeFeeFixed       = detail.fees?.stripeFeeFixed        ?? 10;
-                      const vatOnOwnerFee        = ownerContractFee > 0 ? Math.round(vatRate * ownerContractFee) : 0;
-                      // Number of separate Stripe charges across the contract
-                      const paymentCount         = fullMonths + (remainder > 0 ? 1 : 0);
-                      const totalPlatformFee     = Math.round(platformFeeRate * baseTotal);
-                      const totalVatOnPlatform   = Math.round(vatRate * totalPlatformFee);
-                      const totalStripeFee       = Math.round(stripeFeePercent * baseTotal + stripeFeeFixed * paymentCount);
-                      const ownerNet             = baseTotal - ownerContractFee - vatOnOwnerFee - totalPlatformFee - totalVatOnPlatform - totalStripeFee;
+                      const tenantTotalCharged   = detail.fees?.tenantTotalCharged ?? (detail.rentalAmount + monthlyFees);
+                      const perMonthPlatform     = Math.round(platformFeeRate * detail.rentalAmount);
+                      const perMonthVat          = Math.round(vatRate * perMonthPlatform);
+                      const lastMonthPlatform    = remainder > 0 ? Math.round(platformFeeRate * partialCost) : 0;
+                      const lastMonthVat         = remainder > 0 ? Math.round(vatRate * lastMonthPlatform) : 0;
+                      const totalPlatformFee     = fullMonths * perMonthPlatform + lastMonthPlatform;
+                      const totalVatOnPlatform   = fullMonths * perMonthVat + lastMonthVat;
+                      const firstMonthStripe     = Math.round(stripeFeePercent * tenantTotalCharged + stripeFeeFixed);
+                      const normalMonthStripe    = Math.round(stripeFeePercent * (detail.rentalAmount + monthlyFees) + stripeFeeFixed);
+                      const lastMonthStripe      = remainder > 0 ? Math.round(stripeFeePercent * (partialCost + monthlyFees) + stripeFeeFixed) : 0;
+                      const otherFullMonths      = Math.max(0, fullMonths - 1);
+                      const totalStripeFee       = firstMonthStripe + otherFullMonths * normalMonthStripe + lastMonthStripe;
+                      const totalDeductions      = ownerContractFee + ownerContractFeeVat + totalPlatformFee + totalVatOnPlatform + totalStripeFee;
+                      const ownerNet             = grossTotal - totalDeductions;
                       return (
-                        <div className="flex flex-col gap-0">
-                          {/* Rates */}
-                          <div className="flex flex-col gap-1.5 pb-3">
+                        <div className="flex flex-col gap-3">
+
+                          {/* ── Monthly rates ── */}
+                          <div className="rounded-[6px] bg-[#F7FAFE] px-3 py-2.5 flex flex-col gap-1.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0245A5]">{t("sectionRates")}</p>
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-[#545454]">{t("fieldRental")}</span>
-                              <span className="font-medium text-[#32343C]">{formatPrice(detail.rentalAmount)} / {t("month")}</span>
+                              <span className="font-semibold text-[#32343C]">{formatPrice(detail.rentalAmount)} / {t("month")}</span>
                             </div>
-                            {(detail.dailyRate ?? 0) > 0 && (
+                            {customFees.map((fee, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <span className="text-[#545454]">{fee.name}</span>
+                                <span className="font-semibold text-[#32343C]">{formatPrice(fee.amount)} / {t("month")}</span>
+                              </div>
+                            ))}
+                            {(detail.dailyRate ?? 0) > 0 && remainder > 0 && (
                               <div className="flex items-center justify-between text-xs">
                                 <span className="text-[#545454]">{t("fieldDailyRate")}</span>
-                                <span className="font-medium text-[#32343C]">{formatPrice(detail.dailyRate ?? 0)} {t("perDay")}</span>
+                                <span className="font-semibold text-[#32343C]">{formatPrice(detail.dailyRate ?? 0)} {t("perDay")}</span>
                               </div>
                             )}
                           </div>
 
-                          {/* Month/day breakdown */}
-                          <div className="flex flex-col gap-1.5 border-t border-[rgba(65,65,65,0.1)] py-3">
+                          {/* ── Gross income breakdown ── */}
+                          <div className="rounded-[6px] border border-[rgba(65,65,65,0.1)] px-3 py-2.5 flex flex-col gap-1.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#545454]">{t("sectionGross")}</p>
                             {fullMonths > 0 && (
                               <div className="flex items-center justify-between text-xs">
-                                <span className="text-[#545454]">{fullMonths} {fullMonths === 1 ? t("month") : t("months")} × {formatPrice(detail.rentalAmount)}</span>
-                                <span className="font-medium text-[#32343C]">{formatPrice(fullCost)}</span>
+                                <span className="text-[#969696]">{fullMonths} {fullMonths === 1 ? t("month") : t("months")} × {formatPrice(detail.rentalAmount)}</span>
+                                <span className="text-[#32343C]">{formatPrice(fullCost)}</span>
                               </div>
                             )}
                             {remainder > 0 && (
                               <div className="flex items-center justify-between text-xs">
-                                <span className="text-[#545454]">{remainder} {t("days")} × {formatPrice(detail.dailyRate ?? 0)}</span>
-                                <span className="font-medium text-[#32343C]">{formatPrice(partialCost)}</span>
+                                <span className="text-[#969696]">{remainder} {t("days")} × {formatPrice(detail.dailyRate ?? 0)}</span>
+                                <span className="text-[#32343C]">{formatPrice(partialCost)}</span>
                               </div>
                             )}
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-semibold text-[#32343C]">{t("fieldTotalRent")}</span>
-                              <span className="font-semibold text-[#32343C]">{formatPrice(baseTotal)}</span>
+                            {totalMonthlyFees > 0 && (
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#969696]">{t("fieldMonthlyFees")} ({billingCycles}×)</span>
+                                <span className="text-[#32343C]">{formatPrice(totalMonthlyFees)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between border-t border-[rgba(65,65,65,0.1)] pt-1.5 text-xs">
+                              <span className="font-semibold text-[#32343C]">{t("fieldGrossTotal")}</span>
+                              <span className="font-semibold text-[#32343C]">{formatPrice(grossTotal)}</span>
                             </div>
                           </div>
 
-                          {/* Deductions */}
-                          <div className="flex flex-col gap-1.5 border-t border-[rgba(65,65,65,0.1)] py-3">
+                          {/* ── Platform deductions ── */}
+                          <div className="rounded-[6px] border border-[rgba(227,84,84,0.15)] bg-[#FFF8F8] px-3 py-2.5 flex flex-col gap-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#E35454]">{t("sectionDeductions")}</p>
+
+                            {/* One-time */}
                             {ownerContractFee > 0 && (
-                              <>
+                              <div className="flex flex-col gap-1">
+                                <p className="text-[10px] text-[#969696] font-medium">{t("deductionOneTime")}</p>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#E35454]">{t("fieldOwnerContractFee", { rate: (ownerContractFeeRate * 100).toFixed(0) })}</span>
+                                  <span className="text-[#969696]">{t("fieldOwnerContractFee", { rate: (ownerContractFeeRate * 100).toFixed(0) })}</span>
                                   <span className="font-medium text-[#E35454]">−{formatPrice(ownerContractFee)}</span>
                                 </div>
-                                {vatOnOwnerFee > 0 && (
+                                {ownerContractFeeVat > 0 && (
                                   <div className="flex items-center justify-between text-xs">
-                                    <span className="text-[#E35454]">{t("fieldOwnerContractFeeVat", { rate: (vatRate * 100).toFixed(0) })}</span>
-                                    <span className="font-medium text-[#E35454]">−{formatPrice(vatOnOwnerFee)}</span>
+                                    <span className="text-[#969696]">{t("fieldVatOnContractFee", { rate: (vatRate * 100).toFixed(0) })}</span>
+                                    <span className="font-medium text-[#E35454]">−{formatPrice(ownerContractFeeVat)}</span>
                                   </div>
                                 )}
-                              </>
+                              </div>
                             )}
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-[#E35454]">{t("fieldPlatformFee", { rate: (platformFeeRate * 100).toFixed(0) })}</span>
-                              <span className="font-medium text-[#E35454]">−{formatPrice(totalPlatformFee)}</span>
+
+                            {/* Recurring */}
+                            <div className="flex flex-col gap-1">
+                              <p className="text-[10px] text-[#969696] font-medium">{t("deductionRecurring", { count: billingCycles })}</p>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#969696]">{t("fieldPlatformFee", { rate: (platformFeeRate * 100).toFixed(0) })}</span>
+                                <span className="font-medium text-[#E35454]">−{formatPrice(totalPlatformFee)}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#969696]">{t("fieldVatOnPlatformFee", { rate: (vatRate * 100).toFixed(0) })}</span>
+                                <span className="font-medium text-[#E35454]">−{formatPrice(totalVatOnPlatform)}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[#969696]">{t("fieldProcessingFee")}</span>
+                                <span className="font-medium text-[#E35454]">−{formatPrice(totalStripeFee)}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-[#E35454]">{t("fieldVatOnPlatformFee", { rate: (vatRate * 100).toFixed(0) })}</span>
-                              <span className="font-medium text-[#E35454]">−{formatPrice(totalVatOnPlatform)}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-[#E35454]">{t("fieldStripeFee")}</span>
-                              <span className="font-medium text-[#E35454]">−{formatPrice(totalStripeFee)}</span>
+
+                            <div className="flex items-center justify-between border-t border-[rgba(227,84,84,0.15)] pt-1.5 text-xs">
+                              <span className="font-semibold text-[#E35454]">{t("fieldTotalDeductions")}</span>
+                              <span className="font-semibold text-[#E35454]">−{formatPrice(totalDeductions)}</span>
                             </div>
                           </div>
 
-                          {/* Net */}
-                          <div className="flex items-center justify-between border-t border-[rgba(65,65,65,0.1)] pt-3">
-                            <span className="text-sm font-bold text-[#32343C]">{t("fieldOwnerNet")}</span>
-                            <span className="text-base font-bold text-[#0245A5]">{formatPrice(ownerNet)}</span>
+                          {/* ── Net income ── */}
+                          <div className="rounded-[6px] bg-[#0245A5] px-3 py-3 flex items-center justify-between">
+                            <span className="text-sm font-bold text-white">{t("fieldOwnerNet")}</span>
+                            <span className="text-base font-bold text-white">{formatPrice(ownerNet)}</span>
                           </div>
                         </div>
                       );

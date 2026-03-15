@@ -52,7 +52,9 @@ export default function RentPaymentHistorySection({ bookingId, role }: Props) {
     new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   const groups = groupByStripeRef(entries);
-  const grandTotal = entries.reduce((sum, e) => sum + e.amount, 0);
+  const grandTotal = role === "owner"
+    ? entries.filter(e => e.type === "owner_payout").reduce((sum, e) => sum + e.amount, 0)
+    : entries.reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <div className="rounded-[6px] border border-[rgba(102,102,102,0.12)] p-4">
@@ -63,13 +65,60 @@ export default function RentPaymentHistorySection({ bookingId, role }: Props) {
       ) : (
         <div className="flex flex-col gap-2">
           {groups.map((group, gIdx) => {
+            const borderClass = gIdx < groups.length - 1 ? "border-b border-[rgba(65,65,65,0.06)] pb-3 mb-1" : "";
+
+            /* ── Owner: full deduction breakdown ── */
+            if (role === "owner") {
+              const payout     = group.entries.find(e => e.type === "owner_payout");
+              const deductions = group.entries.filter(e => e.isDeduction);
+              const gross      = (payout?.amount ?? 0) + deductions.reduce((s, e) => s + e.amount, 0);
+
+              return (
+                <div key={group.stripeRef} className={borderClass}>
+                  <p className="mb-1.5 text-[11px] font-semibold text-[#545454]">{formatDate(group.date)}</p>
+
+                  {deductions.length > 0 && (
+                    <div className="rounded-[4px] border border-[rgba(65,65,65,0.08)] bg-[#FAFAFA] p-2">
+                      {/* Gross income */}
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-[#969696]">{t("grossIncome")}</span>
+                        <span className="font-medium text-[#32343C]">{formatPrice(gross)}</span>
+                      </div>
+
+                      {/* Deduction lines */}
+                      {deductions.map((entry) => (
+                        <div key={entry.id} className="flex items-center justify-between py-[3px] pl-2 text-xs">
+                          <span className="text-[#969696]">{entry.description}</span>
+                          <span className="font-medium text-[#E35454]">−{formatPrice(entry.amount)}</span>
+                        </div>
+                      ))}
+
+                      {/* You received */}
+                      <div className="mt-1.5 flex items-center justify-between border-t border-[rgba(65,65,65,0.08)] pt-1.5">
+                        <span className="pl-2 text-[11px] font-semibold text-[#32343C]">{t("youReceived")}</span>
+                        <span className="text-xs font-bold text-[#0245A5]">{formatPrice(payout?.amount ?? 0)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback: no deductions stored (legacy / payout-only) */}
+                  {deductions.length === 0 && payout && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-[#32343C]">{payout.description}</span>
+                      <span className="font-semibold text-[#0245A5]">{formatPrice(payout.amount)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            /* ── Tenant: existing layout ── */
             const isMulti = group.entries.length > 1;
             return (
               <div
                 key={group.stripeRef}
-                className={`${isMulti ? "rounded-[4px] border border-[rgba(65,65,65,0.08)] bg-[#FAFAFA] p-2" : ""} ${gIdx < groups.length - 1 && !isMulti ? "border-b border-[rgba(65,65,65,0.06)] pb-2" : ""}`}
+                className={`${isMulti ? "rounded-[4px] border border-[rgba(65,65,65,0.08)] bg-[#FAFAFA] p-2" : borderClass}`}
               >
-                {/* Single entry */}
                 {!isMulti && (
                   <div className="flex items-center justify-between text-xs">
                     <span className="w-[44%] font-medium text-[#32343C]">{group.entries[0].description}</span>
@@ -78,7 +127,6 @@ export default function RentPaymentHistorySection({ bookingId, role }: Props) {
                   </div>
                 )}
 
-                {/* Grouped entries (e.g. overdue rent + late fee in one payment) */}
                 {isMulti && (
                   <>
                     <div className="mb-1.5 flex items-center justify-between">

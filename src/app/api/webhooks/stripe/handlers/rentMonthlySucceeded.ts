@@ -39,8 +39,13 @@ export async function handleRentMonthlySucceeded(pi: Stripe.PaymentIntent): Prom
   const stripeFeePercent = fees?.stripeFeePercent ?? 0.034;
   const stripeFeeFixed   = fees?.stripeFeeFixed   ?? 10;
 
-  const platformFee      = Math.round(platformFeeRate * chargedAmount);
+  // Platform fee on rent portion only (monthly fees are pass-through to owner)
+  // chargedAmount includes monthly fees, so subtract them to get the rent portion
+  const monthlyFees      = booking.monthlyFees ?? 0;
+  const rentPortion      = chargedAmount - monthlyFees;
+  const platformFee      = Math.round(platformFeeRate * rentPortion);
   const vatOnPlatformFee = Math.round(vatRate * platformFee);
+  // Stripe fee and owner net on full charged amount (includes monthly fees)
   const stripeFee        = Math.round((stripeFeePercent * chargedAmount) + stripeFeeFixed);
   const ownerNet         = chargedAmount - platformFee - vatOnPlatformFee - stripeFee;
 
@@ -85,12 +90,16 @@ export async function handleRentMonthlySucceeded(pi: Stripe.PaymentIntent): Prom
   };
 
   const transactions: TxEntry[] = [
-    { ...txBase, type: "rent_payment", userId: booking.tenantId as Types.ObjectId, amount: chargedAmount,    description: `${monthLabel} rent — booking ${bookingId}` },
+    { ...txBase, type: "rent_payment", userId: booking.tenantId as Types.ObjectId, amount: rentPortion,      description: `${monthLabel} rent — booking ${bookingId}` },
     { ...txBase, type: "platform_fee", userId: null,                                amount: platformFee,      description: `Platform fee (${(platformFeeRate * 100).toFixed(0)}%) — booking ${bookingId}` },
     { ...txBase, type: "vat",          userId: null,                                amount: vatOnPlatformFee, description: `VAT on platform fee — booking ${bookingId}` },
     { ...txBase, type: "stripe_fee",   userId: null,                                amount: stripeFee,        description: `Stripe processing fee — booking ${bookingId}` },
-    { ...txBase, type: "owner_payout", userId: booking.ownerId as Types.ObjectId,   amount: ownerNet,         description: `Owner payout (${monthLabel}) — booking ${bookingId}` },
+    { ...txBase, type: "owner_payout", userId: booking.ownerId as Types.ObjectId,   amount: ownerNet,         description: `Owner payout (${monthLabel}${monthlyFees > 0 ? `, incl. THB ${monthlyFees.toLocaleString()} monthly fees` : ""}) — booking ${bookingId}` },
   ];
+
+  if (monthlyFees > 0) {
+    transactions.push({ ...txBase, type: "monthly_fee", userId: booking.tenantId as Types.ObjectId, amount: monthlyFees, description: `Monthly property fees — booking ${bookingId}` });
+  }
 
   await Promise.all([
     Transaction.insertMany(transactions),
@@ -108,11 +117,20 @@ export async function handleRentMonthlySucceeded(pi: Stripe.PaymentIntent): Prom
       lineItems: [
         {
           description: `${monthLabel} Rent`,
-          amount:      chargedAmount,
+          amount:      rentPortion,
           vatRate:     0,
           vatAmount:   0,
-          total:       chargedAmount,
+          total:       rentPortion,
         },
+        ...(booking.customFeesSnapshot ?? [])
+          .filter((f: { name: string; amount: number }) => f.amount > 0)
+          .map((f: { name: string; amount: number }) => ({
+            description: f.name,
+            amount:      f.amount,
+            vatRate:     0,
+            vatAmount:   0,
+            total:       f.amount,
+          })),
       ],
       subtotal:  chargedAmount,
       vatTotal:  0,

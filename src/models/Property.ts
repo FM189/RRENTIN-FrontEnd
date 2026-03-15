@@ -75,6 +75,7 @@ const PropertySchema = new Schema(
     visitRequestPrice: { type: String, default: "" },
     propertyPrice:     { type: String, default: "" },
     contracts:         { type: [ContractSchema], default: [] },
+    customFees:        { type: [{ name: { type: String }, amount: { type: Number, default: 0 } }], default: [] },
 
     // ── Admin approval ────────────────────────────────────────────────────────
     approvalStatus: {
@@ -141,6 +142,7 @@ export interface IProperty extends Document {
   visitRequestPrice: string;
   propertyPrice: string;
   contracts: { months: number; rentPrice: string; securityDeposit: string }[];
+  customFees: { name: string; amount: number }[];
   // Admin approval
   approvalStatus: "pending" | "approved" | "rejected";
   approvalNote: string;

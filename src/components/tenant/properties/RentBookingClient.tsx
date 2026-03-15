@@ -269,8 +269,11 @@ export default function RentBookingClient({ property, tenantContractFeeEnabled, 
   const tenantContractFeeVat = tenantContractFee > 0
     ? Math.round(vatRate * tenantContractFee)
     : 0;
-  const totalContractValueWithFees = totalContractValue + tenantContractFee + tenantContractFeeVat;
-  const chargedToday = rentalAmount + tenantContractFee + tenantContractFeeVat;
+  const customFees   = property.customFees ?? [];
+  const monthlyFees  = customFees.reduce((sum, f) => sum + f.amount, 0);
+  const totalMonthlyFeesForContract = monthlyFees * billingCycles;
+  const totalContractValueWithFees = totalContractValue + totalMonthlyFeesForContract + tenantContractFee + tenantContractFeeVat;
+  const chargedToday = rentalAmount + monthlyFees + tenantContractFee + tenantContractFeeVat;
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof BookingFormData, string>> = {};
@@ -527,6 +530,13 @@ export default function RentBookingClient({ property, tenantContractFeeEnabled, 
                   <p className="text-xs font-medium text-[#545454]">{t("dailyRate")}</p>
                   <p className="text-xs font-semibold text-primary">{formatPrice(dailyRate)}{t("perDay")}</p>
                 </div>
+                {/* Custom monthly fees */}
+                {customFees.map((fee, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-[4px] bg-[#F7FAFE] px-2.5 py-1.5">
+                    <p className="text-xs font-medium text-[#545454]">{fee.name}</p>
+                    <p className="text-xs font-semibold text-primary">{formatPrice(fee.amount)}{t("perMonth")}</p>
+                  </div>
+                ))}
                 {/* Full months */}
                 {fullMonths > 0 && (
                   <div className="flex items-center justify-between">
@@ -554,12 +564,18 @@ export default function RentBookingClient({ property, tenantContractFeeEnabled, 
                   <p className="text-xs text-[#969696]">{t("securityNote")}</p>
                 </div>
                 {/* Rent total + fees block */}
-                {(tenantContractFee > 0 || tenantContractFeeVat > 0) && (
+                {(monthlyFees > 0 || tenantContractFee > 0 || tenantContractFeeVat > 0) && (
                   <div className="flex flex-col gap-2 rounded-[4px] border border-[rgba(2,69,165,0.15)] bg-[rgba(2,69,165,0.03)] px-2.5 py-2">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-[#545454]">{t("rentTotal")}</p>
                       <p className="text-xs font-semibold text-[#545454]">{formatPrice(totalContractValue)}</p>
                     </div>
+                    {monthlyFees > 0 && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-[#32343C]">{t("monthlyFees")} ({billingCycles}×)</p>
+                        <p className="text-xs font-semibold text-[#32343C]">+{formatPrice(totalMonthlyFeesForContract)}</p>
+                      </div>
+                    )}
                     {tenantContractFee > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1 text-xs font-medium text-[#32343C]">

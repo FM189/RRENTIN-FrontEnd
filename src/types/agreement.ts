@@ -18,8 +18,7 @@ export interface AgreementApiPayload {
   moveInDate:           string;
   moveOutDate:          string;
   paymentDueDay:        number;
-  internetCharge:       number;
-  parkingFee:           number;
+  customFees:           { name: string; amount: number }[];
   includedItems:        string;
   stayDays:             number;
   dailyRate:            number;
